@@ -1,0 +1,71 @@
+style.css
+
+
+
+
+QMenuBar::item:selected {
+    background-color: #ffd700; /* Màu xanh đậm */
+    color: #006400;
+    font-size: 16px;
+    border: 2px solid #006400; /* Đường viền vàng */
+}
+
+QMenu {
+    background-color: white; /* Dark green */
+    color: black;
+    font-size: 14px;
+    border: 2px solid #006400; /* Dark green border */
+}
+QMenu::item {
+    padding: 5px;
+}
+
+QMenu::item:selected {
+    background-color: #ffd700; /* Gold */
+    color: #006400; /* Dark green text */
+}
+
+QTabWidget {
+    background: #006400;/*#f0f0f0;  Màu nền sáng */
+    font-family: Arial; /* Font chữ */
+    font-size: 13px; /* Kích thước font */
+}
+QTabBar::tab {
+    background: #d9d9d9; /* Màu nền tab */
+    padding: 10px; /* Khoảng cách bên trong tab */
+    border: 1px solid #a0a0a0; /* Đường viền tab */
+    border-top-left-radius: 10px;  /* Bo góc trên bên trái */
+    /*border-top-right-radius: 10px;  Bo góc trên bên phải */
+}
+QTabBar::tab:selected {
+    background: gold; /* Màu nền tab được chọn */
+    font-weight: bold; /* Đậm chữ cho tab được chọn */
+}
+
+
+QTabBar::tab:hover {
+    background-color: #ffd700; /* Màu nền khi hover */
+    color: #006400; /* Màu chữ xanh đậm khi hover */
+}
+
+QAction {
+    background-color: #ffd700; /* Gold */
+    color: #006400; /* Dark green text */
+    border: 2px solid #006400; /* Dark green border */
+}
+
+QAction:hover {
+    background-color: #006400; /* Dark green on hover */
+    color: white; /* White text on hover */
+}
+                
+QToolBar {
+    background-color: #ffd700; /* Màu xanh Excel */
+    color: white !important; /* White text on hover */
+    border: 2px solid #006400; /* Dark green border */
+}
+
+QPushButton:hover {
+    color: red;    
+}
+                            
