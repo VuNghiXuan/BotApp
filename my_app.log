@@ -1,0 +1,431 @@
+2025-03-28 14:59:54,238 - ERROR - Lỗi khi xóa vai trò có ID '1' khỏi người dùng: rolls
+2025-03-28 15:19:31,133 - ERROR - Lỗi khi xóa vai trò có ID '1' khỏi người dùng: rolls
+2025-03-28 15:20:43,281 - ERROR - Lỗi khi xóa vai trò có ID '1' khỏi người dùng: rolls
+2025-03-28 15:23:12,361 - ERROR - Lỗi khi xóa vai trò có ID '1' khỏi người dùng: Textual SQL expression 'SELECT count(*) FROM user...' should be explicitly declared as text('SELECT count(*) FROM user...')
+2025-03-28 15:28:36,125 - ERROR - Lỗi khi xóa vai trò có ID '1' khỏi các nhóm: rolls
+2025-03-28 15:41:41,554 - ERROR - Lỗi khi xóa vai trò có ID '1' khỏi các nhóm: rolls
+2025-03-28 15:49:51,086 - ERROR - Lỗi khi xóa vai trò có ID '1': DELETE statement on table 'roll_permission' expected to delete 4 row(s); Only 20 were matched.
+2025-03-28 15:52:40,851 - ERROR - Lỗi khi xóa vai trò có ID '1': DELETE statement on table 'roll_permission' expected to delete 4 row(s); Only 20 were matched.
+2025-03-28 15:57:36,277 - ERROR - Lỗi khi xóa vai trò có ID '1': DELETE statement on table 'roll_permission' expected to delete 4 row(s); Only 20 were matched.
+2025-03-28 16:01:41,397 - ERROR - Lỗi khi xóa vai trò có ID '1': DELETE statement on table 'roll_permission' expected to delete 4 row(s); Only 20 were matched.
+2025-03-28 16:04:59,653 - ERROR - Lỗi khi xóa vai trò có ID '2' khỏi các nhóm: rolls
+2025-03-28 16:27:47,842 - ERROR - Lỗi khi xóa vai trò có ID '2' khỏi các nhóm: rolls
+2025-03-28 16:42:02,979 - ERROR - Lỗi khi xóa vai trò có ID '2' khỏi các nhóm: 'Roll' object has no attribute 'perssions'
+2025-03-28 16:43:15,945 - ERROR - Lỗi khi xóa vai trò có ID '2' khỏi các nhóm: 'Roll' object has no attribute 'perssion'
+2025-03-28 16:46:41,083 - ERROR - Lỗi khi xóa vai trò có ID '1' khỏi các nhóm: DELETE statement on table 'roll_permission' expected to delete 1 row(s); Only 5 were matched.
+2025-03-28 16:49:28,180 - ERROR - Lỗi khi xóa vai trò: DELETE statement on table 'roll_app' expected to delete 2 row(s); Only 20 were matched.
+Traceback (most recent call last):
+  File "e:\pypi_package\vunghixuan\account\register\roll_manager.py", line 123, in delete_roll
+    self._session.commit()
+    ~~~~~~~~~~~~~~~~~~~~^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2032, in commit
+    trans.commit(_to_root=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "<string>", line 2, in commit
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1313, in commit
+    self._prepare_impl()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "<string>", line 2, in _prepare_impl
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1288, in _prepare_impl
+    self.session.flush()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4353, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4488, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 146, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4449, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 589, in execute
+    self.dependency_processor.process_deletes(uow, states)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\dependency.py", line 1120, in process_deletes
+    self._run_crud(
+    ~~~~~~~~~~~~~~^
+        uowcommit, secondary_insert, secondary_update, secondary_delete
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\dependency.py", line 1222, in _run_crud
+    raise exc.StaleDataError(
+    ...<7 lines>...
+    )
+sqlalchemy.orm.exc.StaleDataError: DELETE statement on table 'roll_app' expected to delete 2 row(s); Only 20 were matched.
+
+2025-03-28 16:53:49,354 - ERROR - Lỗi khi xóa vai trò có ID '1' khỏi các nhóm: DELETE statement on table 'roll_permission' expected to delete 1 row(s); Only 5 were matched.
+2025-03-28 16:54:43,882 - ERROR - Lỗi khi xóa vai trò có ID '1' khỏi các nhóm: DELETE statement on table 'roll_permission' expected to delete 1 row(s); Only 5 were matched.
+2025-03-28 16:56:06,416 - ERROR - Lỗi khi xóa vai trò có ID '2' khỏi các nhóm: DELETE statement on table 'roll_permission' expected to delete 1 row(s); Only 2 were matched.
+2025-03-28 16:57:38,321 - ERROR - Lỗi khi xóa vai trò có ID '2' khỏi các nhóm: DELETE statement on table 'roll_permission' expected to delete 1 row(s); Only 2 were matched.
+2025-03-28 16:58:56,801 - ERROR - Lỗi khi xóa vai trò có ID '2' khỏi các nhóm: DELETE statement on table 'roll_permission' expected to delete 1 row(s); Only 2 were matched.
+2025-03-28 17:00:03,716 - ERROR - Lỗi khi xóa vai trò có ID '2' khỏi các nhóm: DELETE statement on table 'roll_permission' expected to delete 1 row(s); Only 2 were matched.
+2025-03-28 17:01:46,937 - ERROR - Lỗi khi xóa vai trò có ID '2' khỏi các nhóm: DELETE statement on table 'roll_permission' expected to delete 1 row(s); Only 2 were matched.
+2025-03-28 17:02:24,217 - ERROR - Lỗi khi xóa vai trò có ID '2' khỏi các nhóm: DELETE statement on table 'roll_permission' expected to delete 1 row(s); Only 2 were matched.
+2025-03-28 17:03:00,785 - ERROR - Lỗi khi xóa vai trò có ID '2' khỏi các nhóm: DELETE statement on table 'roll_permission' expected to delete 1 row(s); Only 2 were matched.
+2025-03-28 19:11:16,699 - ERROR - Lỗi khi xóa vai trò: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: DELETE statement on table 'roll_app' expected to delete 1 row(s); Only 3 were matched. (Background on this error at: https://sqlalche.me/e/20/7s2a)
+Traceback (most recent call last):
+  File "e:\pypi_package\vunghixuan\account\register\roll_manager.py", line 124, in delete_roll
+    self._session.commit()
+    ~~~~~~~~~~~~~~~~~~~~^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2032, in commit
+    trans.commit(_to_root=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "<string>", line 2, in commit
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 103, in _go
+    self._raise_for_prerequisite_state(fn.__name__, current_state)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 973, in _raise_for_prerequisite_state
+    raise sa_exc.PendingRollbackError(
+    ...<6 lines>...
+    )
+sqlalchemy.exc.PendingRollbackError: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: DELETE statement on table 'roll_app' expected to delete 1 row(s); Only 3 were matched. (Background on this error at: https://sqlalche.me/e/20/7s2a)
+
+2025-03-28 19:53:46,384 - ERROR - Không tìm thấy nhóm có ID ql
+2025-03-28 19:53:46,392 - ERROR - Lỗi trong add_rolls_to_group: 'NoneType' object has no attribute 'rolls'
+Traceback (most recent call last):
+  File "e:\pypi_package\vunghixuan\account\register\group_manager.py", line 135, in add_rolls_to_group
+    if roll not in group.rolls:
+                   ^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'rolls'
+
+2025-03-28 20:04:46,969 - ERROR - Không tìm thấy nhóm có ID ql
+2025-03-28 20:18:25,292 - ERROR - Không tìm thấy nhóm có ID ql
+2025-03-30 07:58:03,517 - ERROR - Vai trò 'r1' đã tồn tại.
+2025-03-30 08:52:49,994 - ERROR - Không thể xóa nhóm có ID 6 vì có người dùng đang thuộc nhóm này.
+2025-03-30 08:53:12,689 - ERROR - Không thể xóa nhóm có ID 6 vì có người dùng đang thuộc nhóm này.
+2025-03-30 08:53:48,636 - ERROR - Không thể xóa nhóm có ID 6 vì có người dùng đang thuộc nhóm này.
+2025-03-30 08:54:02,548 - ERROR - Không thể xóa nhóm có ID 6 vì có người dùng đang thuộc nhóm này.
+2025-03-30 08:55:22,945 - ERROR - Không thể xóa nhóm có ID 6 vì có người dùng đang thuộc nhóm này.
+2025-03-30 09:14:08,832 - ERROR - Không thể xóa nhóm có ID 7 vì có người dùng đang thuộc nhóm này.
+2025-03-30 09:22:33,659 - ERROR - Không thể xóa nhóm có ID 7 vì có người dùng đang thuộc nhóm này.
+2025-03-30 09:28:42,746 - ERROR - Không thể xóa nhóm có ID 7 vì có người dùng đang thuộc nhóm này.
+2025-03-30 09:28:59,826 - ERROR - Không thể xóa nhóm có ID 7 vì có người dùng đang thuộc nhóm này.
+2025-03-30 10:08:30,237 - ERROR - Không thể xóa nhóm có ID 7 vì có người dùng đang thuộc nhóm này.
+2025-03-30 10:10:34,815 - ERROR - Không thể xóa nhóm có ID 7 vì có người dùng đang thuộc nhóm này.
+2025-03-30 10:10:34,913 - ERROR - Không thể xóa nhóm có ID 7 vì có người dùng đang thuộc nhóm này.
+2025-03-30 10:11:12,677 - ERROR - Không thể xóa nhóm có ID 7 vì có người dùng đang thuộc nhóm này.
+2025-03-30 10:11:24,904 - ERROR - Không thể xóa nhóm có ID 7 vì có người dùng đang thuộc nhóm này.
+2025-03-30 10:11:36,833 - ERROR - Không thể xóa nhóm có ID 7 vì có người dùng đang thuộc nhóm này.
+2025-03-30 10:14:16,803 - ERROR - Không thể xóa nhóm có ID 7 vì có người dùng đang thuộc nhóm này.
+2025-03-30 10:14:16,902 - ERROR - Không thể xóa nhóm có ID 7 vì có người dùng đang thuộc nhóm này.
+2025-03-30 10:14:18,293 - ERROR - Không thể xóa nhóm có ID 7 vì có người dùng đang thuộc nhóm này.
+2025-03-30 10:25:17,817 - ERROR - Không thể xóa nhóm có ID 7 vì có người dùng đang thuộc nhóm này.
+2025-03-30 10:28:39,636 - ERROR - Không thể xóa nhóm có ID 7 vì có người dùng đang thuộc nhóm này.
+2025-03-30 10:29:34,115 - ERROR - Không thể xóa nhóm có ID 7 vì có người dùng đang thuộc nhóm này.
+2025-03-30 10:29:34,194 - ERROR - Không thể xóa nhóm có ID 7 vì có người dùng đang thuộc nhóm này.
+2025-03-30 10:33:05,683 - ERROR - Không thể xóa nhóm có ID 7 vì có người dùng đang thuộc nhóm này.
+2025-03-30 10:40:57,202 - ERROR - Không thể xóa nhóm có ID 7 vì có người dùng đang thuộc nhóm này.
+2025-03-30 11:31:29,849 - ERROR - Không thể xóa nhóm có ID 2 vì có người dùng đang thuộc nhóm này.
+2025-03-30 16:07:25,759 - ERROR - Không thể xóa nhóm có ID 1 vì có người dùng đang thuộc nhóm này.
+2025-04-06 16:52:57,297 - ERROR - Không thể xóa nhóm có ID 2 vì có người dùng đang thuộc nhóm này.
+2025-04-06 17:33:39,100 - ERROR - Lỗi khi xóa nhóm có ID 3: DELETE statement on table 'group_roll' expected to delete 1 row(s); Only 2 were matched.
+Traceback (most recent call last):
+  File "e:\pypi_package\vunghixuan\account\register\group_manager.py", line 125, in delete_group
+    self._session.commit()
+    ~~~~~~~~~~~~~~~~~~~~^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2032, in commit
+    trans.commit(_to_root=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "<string>", line 2, in commit
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1313, in commit
+    self._prepare_impl()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "<string>", line 2, in _prepare_impl
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1288, in _prepare_impl
+    self.session.flush()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4353, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4488, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 146, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4449, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 589, in execute
+    self.dependency_processor.process_deletes(uow, states)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\dependency.py", line 1120, in process_deletes
+    self._run_crud(
+    ~~~~~~~~~~~~~~^
+        uowcommit, secondary_insert, secondary_update, secondary_delete
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\dependency.py", line 1222, in _run_crud
+    raise exc.StaleDataError(
+    ...<7 lines>...
+    )
+sqlalchemy.orm.exc.StaleDataError: DELETE statement on table 'group_roll' expected to delete 1 row(s); Only 2 were matched.
+
+2025-04-06 17:33:51,640 - ERROR - Lỗi khi xóa nhóm có ID 3: DELETE statement on table 'group_roll' expected to delete 1 row(s); Only 2 were matched.
+Traceback (most recent call last):
+  File "e:\pypi_package\vunghixuan\account\register\group_manager.py", line 125, in delete_group
+    self._session.commit()
+    ~~~~~~~~~~~~~~~~~~~~^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2032, in commit
+    trans.commit(_to_root=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "<string>", line 2, in commit
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1313, in commit
+    self._prepare_impl()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "<string>", line 2, in _prepare_impl
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1288, in _prepare_impl
+    self.session.flush()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4353, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4488, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 146, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4449, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 589, in execute
+    self.dependency_processor.process_deletes(uow, states)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\dependency.py", line 1120, in process_deletes
+    self._run_crud(
+    ~~~~~~~~~~~~~~^
+        uowcommit, secondary_insert, secondary_update, secondary_delete
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\dependency.py", line 1222, in _run_crud
+    raise exc.StaleDataError(
+    ...<7 lines>...
+    )
+sqlalchemy.orm.exc.StaleDataError: DELETE statement on table 'group_roll' expected to delete 1 row(s); Only 2 were matched.
+
+2025-04-06 17:34:01,528 - ERROR - Lỗi khi xóa nhóm có ID 3: DELETE statement on table 'group_roll' expected to delete 1 row(s); Only 2 were matched.
+Traceback (most recent call last):
+  File "e:\pypi_package\vunghixuan\account\register\group_manager.py", line 125, in delete_group
+    self._session.commit()
+    ~~~~~~~~~~~~~~~~~~~~^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2032, in commit
+    trans.commit(_to_root=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "<string>", line 2, in commit
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1313, in commit
+    self._prepare_impl()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "<string>", line 2, in _prepare_impl
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1288, in _prepare_impl
+    self.session.flush()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4353, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4488, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 146, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4449, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 589, in execute
+    self.dependency_processor.process_deletes(uow, states)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\dependency.py", line 1120, in process_deletes
+    self._run_crud(
+    ~~~~~~~~~~~~~~^
+        uowcommit, secondary_insert, secondary_update, secondary_delete
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\dependency.py", line 1222, in _run_crud
+    raise exc.StaleDataError(
+    ...<7 lines>...
+    )
+sqlalchemy.orm.exc.StaleDataError: DELETE statement on table 'group_roll' expected to delete 1 row(s); Only 2 were matched.
+
+2025-04-06 17:35:46,099 - ERROR - Lỗi khi xóa nhóm có ID 3: DELETE statement on table 'group_roll' expected to delete 1 row(s); Only 2 were matched.
+Traceback (most recent call last):
+  File "e:\pypi_package\vunghixuan\account\register\group_manager.py", line 126, in delete_group
+    self._session.commit()
+    ~~~~~~~~~~~~~~~~~~~~^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2032, in commit
+    trans.commit(_to_root=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "<string>", line 2, in commit
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1313, in commit
+    self._prepare_impl()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "<string>", line 2, in _prepare_impl
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1288, in _prepare_impl
+    self.session.flush()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4353, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4488, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 146, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4449, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 589, in execute
+    self.dependency_processor.process_deletes(uow, states)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\dependency.py", line 1120, in process_deletes
+    self._run_crud(
+    ~~~~~~~~~~~~~~^
+        uowcommit, secondary_insert, secondary_update, secondary_delete
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\dependency.py", line 1222, in _run_crud
+    raise exc.StaleDataError(
+    ...<7 lines>...
+    )
+sqlalchemy.orm.exc.StaleDataError: DELETE statement on table 'group_roll' expected to delete 1 row(s); Only 2 were matched.
+
+2025-04-06 17:36:35,513 - ERROR - Lỗi khi xóa nhóm có ID 3: DELETE statement on table 'group_roll' expected to delete 1 row(s); Only 2 were matched.
+Traceback (most recent call last):
+  File "e:\pypi_package\vunghixuan\account\register\group_manager.py", line 126, in delete_group
+    self._session.commit()
+    ~~~~~~~~~~~~~~~~~~~~^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2032, in commit
+    trans.commit(_to_root=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "<string>", line 2, in commit
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1313, in commit
+    self._prepare_impl()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "<string>", line 2, in _prepare_impl
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1288, in _prepare_impl
+    self.session.flush()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4353, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4488, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 146, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4449, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 589, in execute
+    self.dependency_processor.process_deletes(uow, states)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\dependency.py", line 1120, in process_deletes
+    self._run_crud(
+    ~~~~~~~~~~~~~~^
+        uowcommit, secondary_insert, secondary_update, secondary_delete
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\dependency.py", line 1222, in _run_crud
+    raise exc.StaleDataError(
+    ...<7 lines>...
+    )
+sqlalchemy.orm.exc.StaleDataError: DELETE statement on table 'group_roll' expected to delete 1 row(s); Only 2 were matched.
+
+2025-04-06 17:37:35,230 - ERROR - Không thể xóa nhóm có ID 2 vì có người dùng đang thuộc nhóm này.
+2025-04-06 17:38:05,249 - ERROR - Lỗi khi xóa nhóm có ID 3: DELETE statement on table 'group_roll' expected to delete 2 row(s); Only 4 were matched.
+Traceback (most recent call last):
+  File "e:\pypi_package\vunghixuan\account\register\group_manager.py", line 126, in delete_group
+    self._session.commit()
+    ~~~~~~~~~~~~~~~~~~~~^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2032, in commit
+    trans.commit(_to_root=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "<string>", line 2, in commit
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1313, in commit
+    self._prepare_impl()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "<string>", line 2, in _prepare_impl
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1288, in _prepare_impl
+    self.session.flush()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4353, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4488, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 146, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4449, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 589, in execute
+    self.dependency_processor.process_deletes(uow, states)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\dependency.py", line 1120, in process_deletes
+    self._run_crud(
+    ~~~~~~~~~~~~~~^
+        uowcommit, secondary_insert, secondary_update, secondary_delete
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "e:\pypi_package\venv\Lib\site-packages\sqlalchemy\orm\dependency.py", line 1222, in _run_crud
+    raise exc.StaleDataError(
+    ...<7 lines>...
+    )
+sqlalchemy.orm.exc.StaleDataError: DELETE statement on table 'group_roll' expected to delete 2 row(s); Only 4 were matched.
+

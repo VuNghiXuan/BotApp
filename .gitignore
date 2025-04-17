@@ -1,0 +1,6 @@
+dist
+build
+kpht_sofe
+venv
+./venv/Lib/site-packages/PySide6/Qt6WebEngineCore.dll 
+vunghixuan.egg-info
