@@ -9,6 +9,9 @@ from PySide6.QtCore import Slot
 import pandas as pd
 import os
 from vunghixuan.bot_station.load_gif_file import LoadingGifLabel
+from vunghixuan.bot_station.check_data_BE_vs_BE import DataComparisonWorker
+from vunghixuan.settings import FILES_URL
+import xlwings as xw
 
 class CheckTicketsForm(QWidget):
     """
@@ -39,7 +42,44 @@ class CheckTicketsForm(QWidget):
     @Slot(dict)
     def handle_all_data_loaded(self, all_data):
         self.file_data = all_data
-        # Bạn có thể thực hiện xử lý dữ liệu ban đầu ở đây nếu cần
+        file_names = self.file_data.keys()
+        result_file_name_base = 'Kết quả đối soát'
+        fe_data = None
+        be_data = None
+        date_str = ''
+
+        for file_name in file_names:
+            if 'FE' in file_name:
+                fe_data = self.file_data[file_name]
+                try:
+                    date_str = file_name.split('FE')[1].split('.')[0]
+                except IndexError:
+                    date_str = ''
+            elif 'BE' in file_name:
+                be_data = self.file_data[file_name]
+
+        result_file_name = f'{result_file_name_base}{date_str}.xlsx'
+        output_dir = os.path.join(FILES_URL, 'output')
+        os.makedirs(output_dir, exist_ok=True)  # Tạo thư mục output nếu chưa tồn tại
+        output_path = os.path.join(output_dir, result_file_name)
+
+        if fe_data is not None and be_data is not None:
+            result_pd = DataComparisonWorker(fe_data, be_data, output_path)
+            data_BE_vs_BE = result_pd.run()
+            self.load_data_to_table(data_BE_vs_BE)
+
+            # Xuất dữ liệu ra file Excel bằng pandas
+            df = pd.DataFrame(data_BE_vs_BE)  # Chuyển dữ liệu thành DataFrame
+            try:
+                df.to_excel(output_path, index=False)
+                print(f"Đã xuất kết quả ra file: {output_path}")
+                # Mở file Excel sau khi lưu (tùy chọn)
+                wb = xw.Book(output_path)
+            except Exception as e:
+                print(f"Lỗi khi xuất file Excel: {e}")
+        else:
+            print("Không đủ dữ liệu FE và BE để thực hiện đối soát và xuất file.")
+
         pass
 
     @Slot(pd.DataFrame)

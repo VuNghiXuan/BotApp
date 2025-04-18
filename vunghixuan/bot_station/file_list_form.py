@@ -54,6 +54,7 @@ class FileListForm(QWidget):
 
         # Nút xóa file
         self.delete_button = MyQPushButton("Xóa File")
+        self.delete_button.set_style_3D()
         self.delete_button.clicked.connect(self.delete_selected_file)
         main_layout.addWidget(self.delete_button)
 

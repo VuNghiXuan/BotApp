@@ -94,7 +94,7 @@ class LoginGroupBox(QWidget):
         if isUser:
             self.hide()
             self.parent().tab_widget.setVisible(True)
-            self.main_window.showFullScreen()
+            self.main_window.showMaximized()
             self.main_window.handle_login_success(username)
         else:
             QMessageBox.warning(self, "Lỗi", "Tên người dùng hoặc mật khẩu không đúng.")
