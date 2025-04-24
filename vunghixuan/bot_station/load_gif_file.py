@@ -5,12 +5,13 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QDir, Slot, Signal, QThread
 from PySide6.QtGui import QMovie
 from vunghixuan.gui.widgets import MyQLabel, MyQLineEdit, MyQPushButton
+from vunghixuan.settings import STATIC_DIR_RELATIVE
 
 import os
 import pandas as pd
 
 class LoadingGifLabel(QLabel):
-    def __init__(self, parent=None, gif_path="vunghixuan/static/gif/01-36-23-338_512.webp"):
+    def __init__(self, parent=None, gif_path=f"{STATIC_DIR_RELATIVE}/gif/01-36-23-338_512.webp"):
         super().__init__(parent)
         self.movie = QMovie(gif_path)
         self.setAlignment(Qt.AlignCenter)

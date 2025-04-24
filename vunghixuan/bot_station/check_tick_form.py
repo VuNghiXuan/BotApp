@@ -65,18 +65,20 @@ class CheckTicketsForm(QWidget):
 
         if fe_data is not None and be_data is not None:
             result_pd = DataComparisonWorker(fe_data, be_data, output_path)
-            data_BE_vs_BE = result_pd.run()
-            self.load_data_to_table(data_BE_vs_BE)
+            dic_excel = result_pd.run()
+            print (dic_excel)
 
-            # Xuất dữ liệu ra file Excel bằng pandas
-            df = pd.DataFrame(data_BE_vs_BE)  # Chuyển dữ liệu thành DataFrame
-            try:
-                df.to_excel(output_path, index=False)
-                print(f"Đã xuất kết quả ra file: {output_path}")
-                # Mở file Excel sau khi lưu (tùy chọn)
-                wb = xw.Book(output_path)
-            except Exception as e:
-                print(f"Lỗi khi xuất file Excel: {e}")
+            self.load_data_to_table(dic_excel['Tổng hợp FE_BE'])
+
+            # # Xuất dữ liệu ra file Excel bằng pandas
+            # # df = pd.DataFrame(data_BE_vs_BE)  # Chuyển dữ liệu thành DataFrame
+            # try:
+            #     df.to_excel(output_path, index=False)
+            #     print(f"Đã xuất kết quả ra file: {output_path}")
+            #     # Mở file Excel sau khi lưu (tùy chọn)
+            #     wb = xw.Book(output_path)
+            # except Exception as e:
+                # print(f"Lỗi khi xuất file Excel: {e}")
         else:
             print("Không đủ dữ liệu FE và BE để thực hiện đối soát và xuất file.")
 
@@ -87,12 +89,17 @@ class CheckTicketsForm(QWidget):
         """
         Slot này nhận DataFrame và tải dữ liệu vào TableData.
         """
-        if not df.empty:
-            # Chuyển DataFrame thành list of dict để phù hợp với TableData (nếu cần)
-            data_for_table = df.to_dict('records')
-            self.data_table.load_data(data_for_table)
+        # Kiểm tra xem df có phải là None trước khi truy cập thuộc tính 'empty'
+        if df is not None:
+            if not df.empty:
+                # Chuyển DataFrame thành list of dict để phù hợp với TableData (nếu cần)
+                data_for_table = df.to_dict('records')
+                self.data_table.load_data(data_for_table)
+            else:
+                self.data_table.clear()
         else:
-            self.data_table.clear()
+            print("Hàm load_data_to_table nhận vào một đối tượng None.")
+            self.data_table.clear() # Đảm bảo bảng được làm trống nếu không có dữ liệu
 
     @Slot(str)
     def old_load_data_to_table(self, file_path):
