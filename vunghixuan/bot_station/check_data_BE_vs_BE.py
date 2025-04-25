@@ -11,6 +11,9 @@ import os
 from vunghixuan.bot_station.load_gif_file import LoadingGifLabel
 import platform
 import subprocess
+import numpy as np
+from vunghixuan.bot_station.check_cost import CheckTickets
+import xlwings as xw
 
 class DataComparisonWorker(QObject):
     finished = Signal()
@@ -28,6 +31,20 @@ class DataComparisonWorker(QObject):
             return pd_columns.get_loc(col_name)
         else:
             return None
+
+    # Loại bỏ các dòng nan
+    def clear_nan_rows_from_colname(self, df, col_name):
+        """
+        Hàm này mục đích để loại bỏ các dòng cuối, như:
+         - Dòng thời gian thống kê, chữ ký
+         - Chọn cột có đầy đủ dữ liệu nhất và không chứa các các giá trị này :'thời gian thống kê, chữ ký'
+          """
+        # Chuyển đổi sang kiểu chuỗi
+        df[col_name] = df[col_name].astype(str)
+        # Loại bỏ các dòng có giá trị 'nan' trong cột chỉ định
+        df_cleaned = df[df[col_name] != 'nan'].copy()
+        
+        return df_cleaned
 
     def standardize_ma_giao_dich_fe(self, df, col_name):
         if df is not None and col_name in df.columns:
@@ -274,49 +291,32 @@ class DataComparisonWorker(QObject):
         return aggregated_df
 
 
-    def group_abc(self, aggregated_df, col_name):
-        """
-        Nhiệm vụ ngày 250423:
-            ***** Nhóm theo 'biển số' hay hơn nhóm Group 'mã thẻ' vì 1 xe gắn nhiều mã thẻ, có thể trừ tiền cả 2 thẻ nếu xe gắn vào
-            - Tìm Cột 'Phí thu' mà FE tính tiền mà BE không tính tiền
-            - Sau đó tra lại cột 'Mã thẻ' nhóm thành Group theo cột 'Mã thẻ'
-                Lưu ý: Xét đến trường hợp cùng số xe nhưng có nhiều thẻ vẫn bị trừ tiền
-                Một "Mã thẻ' có thể gắn nhiều xe (Có thể loại)
-
-            * Điều kiện: Nếu BE phí = 0 nghĩa là hoàn tiền, cũng chính là số chênh lệch giữa phí BE và FE
-            ? Có cần thêm cột 'Hoàn tiền' để làm sao cho BE và FE khớp số ==> Nghĩa là để cột 'chênh lệch phí thu' = 0 VNĐ
-        """
-
-        # Loại bỏ các dòng tổng cộng nếu có để tránh ảnh hưởng đến việc nhóm
-        aggregated_df = aggregated_df[~aggregated_df[col_name].str.contains('Tổng cộng', na=False)]
-
-        # Chuẩn hóa cột biển số xe (loại bỏ khoảng trắng và chuyển về chữ hoa để so sánh)
-        aggregated_df['Số xe đăng ký'] = aggregated_df['Số xe đăng ký'].astype(str).str.strip().str.upper()
-        aggregated_df['BE_Biển số xe'] = aggregated_df['BE_Biển số xe'].astype(str).str.strip().str.upper()
-
-        # Nhóm theo 'Số xe đăng ký' nếu không trống, ngược lại nhóm theo 'BE_Biển số xe'
-        def get_group_key(row):
-            if pd.notna(row['Số xe đăng ký']) and row['Số xe đăng ký'] != 'NAN':
-                return row['Số xe đăng ký']
-            elif pd.notna(row['BE_Biển số xe']) and row['BE_Biển số xe'] != 'NAN':
-                return row['BE_Biển số xe']
-            else:
-                return pd.NA  # Hoặc một giá trị khác để xử lý các trường hợp không có biển số
-
-        aggregated_df['Biển số nhóm'] = aggregated_df.apply(get_group_key, axis=1)
-
-        # Loại bỏ các dòng không có biển số để nhóm
-        aggregated_df_grouped = aggregated_df.dropna(subset=['Biển số nhóm']).groupby('Biển số nhóm', sort=False).apply(lambda x: x.fillna(method='ffill').fillna(method='bfill')).reset_index(drop=True)
-
-        # Loại bỏ cột phụ 'Biển số nhóm'
-        aggregated_df_grouped = aggregated_df_grouped.drop(columns=['Biển số nhóm'])
-
-        return aggregated_df_grouped
-
     def run(self):
         try:
             if self.fe_data is None or self.be_data is None:
                 raise ValueError("Không có dữ liệu FE hoặc BE để so sánh.")
+            
+            "Chạy hảm đối soát vé import numpy as np"
+
+            # # Chuẩn hóa cột 'Mã giao dịch' cho FE và BE
+            # col_name = 'Mã giao dịch'
+            # fe_processed = self.clear_nan_rows_from_colname(self.fe_data.copy(), col_name)
+            # be_processed = self.standardize_ma_giao_dich_be(self.be_data.copy(), col_name)
+
+
+           
+
+            # # df_doi_soat = self.doi_soat_thu_phi(fe_processed, be_processed)
+            # df_doi_soat = DoiSoatThuPhi().doi_soat_thu_phi(fe_processed, be_processed)
+
+            # print(df_doi_soat)
+            # with pd.ExcelWriter(self.output_dir) as writer: 
+            #     df_doi_soat.to_excel(writer, sheet_name='doi_soat', index=False)
+
+            # return df_doi_soat
+
+            "tạm dừng sau khi xuất file exe import numpy as np"
+
 
             col_name = 'Mã giao dịch'
             id_col_name_in_fe = self.get_id_column_name(col_name, self.fe_data.columns)
@@ -332,14 +332,19 @@ class DataComparisonWorker(QObject):
             df_list = [fe_processed, be_processed]
             aggregated_df = self.get_sh_TongHop(df_list)
 
-            # Nhóm theo Group biển số
-
-
-            # Chuẩn hóa cột 'Mã giao dịch' cho FE và BE (nếu cần)
-            fe_processed = self.standardize_ma_giao_dich_fe(self.fe_data.copy(), col_name)
-            be_processed = self.standardize_ma_giao_dich_be(self.be_data.copy(), col_name)
-
             
+            # Kiểm tra các điều kiện về chi phí
+            df_check_cost = CheckTickets().check_cost_station(aggregated_df.copy())
+            # print(df_check_cost)
+           
+
+            # # Sau đó, kiểm tra tính nhất quán về thời gian trên kết quả đã có
+            # df_final_check = check_cost.check_time_consistency(aggregated_df.copy(), time_threshold_minutes=3)
+
+            # # df_final_check bây giờ sẽ có thông tin về cả chênh lệch chi phí và thời gian
+            # print(df_final_check[['Biển số xe chuẩn', 'Phí thu', 'BE_Tiền bao gồm thuế', 'Chênh lệch (Phí thu - BE_Tiền bao gồm thuế)', 'Ngày giờ', 'BE_Thời gian qua trạm', 'Ghi chú']].head(20))
+
+                     
             # return aggregated_df # Trả về DataFrame kết quả
             
             # Lấy các mã giao dịch chỉ có trong file FE mà không có trong file BE
@@ -372,6 +377,10 @@ class DataComparisonWorker(QObject):
                 aggregated_df.to_excel(writer, sheet_name='Tổng hợp FE_BE', index=False)
                 dic_excel['Tổng hợp FE_BE'] = aggregated_df
 
+                # Ghi data cho sh_check_cosst
+                df_check_cost.to_excel(writer, sheet_name='Đối soát phí thu', index=False)
+                dic_excel['Đối soát phí thu'] = df_check_cost
+
                 # Tính phí và Ghi ra sheet mã giao dịch không có trong BE
                 mgd_not_be = self.add_summary_row(mgd_not_be, 'Phí thu', col_name)
                 mgd_not_be.to_excel(writer, sheet_name='GiaoDich_ko_tồn_tại_BE', index=False)
@@ -385,8 +394,12 @@ class DataComparisonWorker(QObject):
                 be_mgd_has_value_0_df.to_excel(writer, sheet_name='LoaiVe_UT_ToanQuoc_BE', index=False)
                 dic_excel['LoaiVe_UT_ToanQuoc_BE'] = be_mgd_has_value_0_df
 
+                
+
             # self.result_ready.emit(pd.DataFrame(), self.output_dir) # Phát tín hiệu hoàn thành (không trả về DataFrame cụ thể)
             # self.finished.emit()
+
+            # Trả kết quả để check_tick_form tiếp tục show lên bảng hoặc mở file, sheets
             return dic_excel
 
         except ValueError as ve:

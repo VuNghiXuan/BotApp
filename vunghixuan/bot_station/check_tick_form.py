@@ -68,17 +68,35 @@ class CheckTicketsForm(QWidget):
             dic_excel = result_pd.run()
             print (dic_excel)
 
-            self.load_data_to_table(dic_excel['Tổng hợp FE_BE'])
+            # self.load_data_to_table(dic_excel['Tổng hợp FE_BE'])
+            # self.load_data_to_table(dic_excel)
+            self.load_data_to_table(dic_excel['Đối soát phí thu']) 
 
-            # # Xuất dữ liệu ra file Excel bằng pandas
-            # # df = pd.DataFrame(data_BE_vs_BE)  # Chuyển dữ liệu thành DataFrame
-            # try:
-            #     df.to_excel(output_path, index=False)
-            #     print(f"Đã xuất kết quả ra file: {output_path}")
-            #     # Mở file Excel sau khi lưu (tùy chọn)
-            #     wb = xw.Book(output_path)
-            # except Exception as e:
-                # print(f"Lỗi khi xuất file Excel: {e}")
+
+            # Xuất dữ liệu ra file Excel bằng pandas
+            # df = pd.DataFrame(data_BE_vs_BE)  # Chuyển dữ liệu thành DataFrame
+            try:
+                
+                # Mở file Excel sau khi lưu (tùy chọn)
+                wb = xw.Book(output_path)
+                
+                # Iterate through each sheet in the workbook
+                for sheet in wb.sheets:
+                    # # Autofit columns
+                    sheet.autofit('columns')
+                    # # Autofit rows
+                    sheet.autofit('rows')
+                    # Thiết lập thuộc tính WrapText cho toàn bộ ô
+                    # sheet.range('A1').expand().api.WrapText = True
+                    # sheet.autofit('columns')
+                    
+
+                    # Save and close the workbook
+                    wb.save()
+                # wb.close()
+
+            except Exception as e:
+                print(f"Lỗi khi xuất file Excel: {e}")
         else:
             print("Không đủ dữ liệu FE và BE để thực hiện đối soát và xuất file.")
 

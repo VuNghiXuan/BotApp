@@ -98,5 +98,11 @@ def main():
 if __name__ == '__main__':
     main()
 
+    """
+    Build file ra exe
+        1. Chạy trong môi trường ảo
+        2. pyinstaller run_check_tickets.spec
+    """
+    # Build file ra exe: pyinstaller run_check_tickets.spec
 
     
