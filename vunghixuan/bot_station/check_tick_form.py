@@ -46,6 +46,8 @@ class CheckTicketsForm(QWidget):
         result_file_name_base = 'Kết quả đối soát'
         fe_data = None
         be_data = None
+        revenue_data = None
+        antagonize_data = None
         date_str = ''
 
         for file_name in file_names:
@@ -57,6 +59,11 @@ class CheckTicketsForm(QWidget):
                     date_str = ''
             elif 'BE' in file_name:
                 be_data = self.file_data[file_name]
+            elif 'BaoCao' in file_name:
+                revenue_data = self.file_data[file_name]
+            elif 'antagonize' in file_name:
+                antagonize_data = self.file_data[file_name]
+            
 
         result_file_name = f'{result_file_name_base}{date_str}.xlsx'
         output_dir = os.path.join(FILES_URL, 'output')
@@ -64,36 +71,26 @@ class CheckTicketsForm(QWidget):
         output_path = os.path.join(output_dir, result_file_name)
 
         if fe_data is not None and be_data is not None:
-            result_pd = DataComparisonWorker(fe_data, be_data, output_path)
+            result_pd = DataComparisonWorker(fe_data, be_data, revenue_data, antagonize_data, output_path)
             dic_excel = result_pd.run()
             print (dic_excel)
 
             # self.load_data_to_table(dic_excel['Tổng hợp FE_BE'])
             # self.load_data_to_table(dic_excel)
-            self.load_data_to_table(dic_excel['Đối soát phí thu']) 
+            # self.load_data_to_table(dic_excel['Đối soát phí thu']) 
+            self.load_data_to_table(dic_excel['Kết quả CL phí nguội']) 
+            
 
 
             # Xuất dữ liệu ra file Excel bằng pandas
             # df = pd.DataFrame(data_BE_vs_BE)  # Chuyển dữ liệu thành DataFrame
             try:
                 
-                # Mở file Excel sau khi lưu (tùy chọn)
-                wb = xw.Book(output_path)
-                
-                # Iterate through each sheet in the workbook
-                for sheet in wb.sheets:
-                    # # Autofit columns
-                    sheet.autofit('columns')
-                    # # Autofit rows
-                    sheet.autofit('rows')
-                    # Thiết lập thuộc tính WrapText cho toàn bộ ô
-                    # sheet.range('A1').expand().api.WrapText = True
-                    # sheet.autofit('columns')
-                    
+                # Mở file Excel ẩn để trang trí cho nhanh
+                wb = xw.Book(output_path, visble = True)
+                wb.sheets[0].activate()
 
-                    # Save and close the workbook
-                    wb.save()
-                # wb.close()
+               
 
             except Exception as e:
                 print(f"Lỗi khi xuất file Excel: {e}")
