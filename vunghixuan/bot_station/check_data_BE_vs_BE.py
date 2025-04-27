@@ -338,7 +338,7 @@ class DataComparisonWorker(QObject):
             
             # Lọc xe theo tiên đoán lỗi cam
             df_fillter_predict_cam = check_cost.fillter_predict_multiple_camera_reads(df_fee_diff.copy())
-
+            "Mai kiểm tra lại code này"
 
             # Kết quả xác định lỗi cam lần 1
             df_diff_free_cam = check_cost.find_multiple_camera_reads_with_fee_discrepancy(df_fillter_predict_cam)
@@ -359,26 +359,26 @@ class DataComparisonWorker(QObject):
 
             sheets_and_data = {
                 # Phần thu thập dữ liệu
-                'FE Gốc': self.add_summary_row(fe_processed, 'Phí thu', col_name),
-                'BE Gốc': self.add_summary_row(be_processed, 'Tiền bao gồm thuế', col_name),
+                'FE': self.add_summary_row(fe_processed, 'Phí thu', col_name),
+                'BE': self.add_summary_row(be_processed, 'Tiền bao gồm thuế', col_name),
                 'Gộp FE_BE': aggregated_df,
-                'BaoCaoDoanhThu Gốc': self.revenue_data,
-                'antagonize Gốc' : self.antagonize_data,
+                'DoanhThuVETC': self.revenue_data,
+                'DoiSoatGDVETC' : self.antagonize_data,
 
                 # Phần phân loại xe nghi vấn
-                'Nhóm xe gây CL phí': df_fee_diff,
-                'Nhóm xe nghi vấn quét trùng': df_fillter_predict_cam,
-                'Nhóm GD chỉ có FE': self.add_summary_row(mgd_not_be, 'Phí thu', col_name),
-                'Nhóm Ve_UT_ToanQuoc_FE': self.add_summary_row(fe_mgd_has_value_0_df, 'Phí thu', col_name),
-                'Nhóm Ve_UT_ToanQuoc_BE': self.add_summary_row(be_mgd_has_value_0_df, 'Tiền bao gồm thuế', col_name),
+                'Xe gây CL phí': df_fee_diff,
+                'Xe trùng GD': df_fillter_predict_cam,
+                'Có FE không có BE': self.add_summary_row(mgd_not_be, 'Phí thu', col_name),
+                'Xe UTToanQuoc_FE': self.add_summary_row(fe_mgd_has_value_0_df, 'Phí thu', col_name),
+                'Xe UTToanQuoc_BE': self.add_summary_row(be_mgd_has_value_0_df, 'Tiền bao gồm thuế', col_name),
 
                 # Phần tiên đoán và loại duy dần
-                'Tiên đoán CL phí': df_predict_fee,
+                'Chênh lệch phí thu': df_predict_fee,
 
                 # Phần kết quả
                 
-                'Kết quả CL phí nguội': df_evasion_result,
-                'Kết quả CL phí quét trùng': df_diff_free_cam,
+                'KQ thu phí nguội': df_evasion_result,
+                'KQ phí trùng GD': df_diff_free_cam,
             }
 
             # sheet_names = list(sheets_and_data.keys())
