@@ -71,7 +71,7 @@ class FileListForm(QWidget):
             self.folder_line_edit.setText(folder_path)
             self.folder_path = folder_path
             self.load_all_data_from_folder(folder_path)
-
+    
     def load_all_data_from_folder(self, folder_path):
         self.file_list_widget.clear() # Clear list widget ở đây
         self.file_paths = {"FE": None, "BE": None, "antagonize": None, "BaoCaoTongHopDoanhThu": None}
@@ -92,10 +92,10 @@ class FileListForm(QWidget):
                 self.file_paths["BE"] = file_path
                 files_to_load.append(("BE", file_path))
             elif "antagonize" in entry and self.file_paths["antagonize"] is None:
-                self.file_paths["antagonize"] = file_path
+                # self.file_paths["antagonize"] = file_path
                 files_to_load.append(("antagonize", file_path))
             elif "BaoCaoTongHopDoanhThu" in entry and self.file_paths["BaoCaoTongHopDoanhThu"] is None:
-                self.file_paths["BaoCaoTongHopDoanhThu"] = file_path
+                # self.file_paths["BaoCaoTongHopDoanhThu"] = file_path
                 files_to_load.append(("BaoCaoTongHopDoanhThu", file_path))
 
         print(f"Đường dẫn file FE: {self.file_paths['FE']}")
@@ -114,6 +114,49 @@ class FileListForm(QWidget):
                 worker.start()
         else:
             QMessageBox.warning(self, "Cảnh báo", "Không tìm thấy file FE hoặc BE trong thư mục.")
+
+    # def load_all_data_from_folder(self, folder_path):
+    #     self.file_list_widget.clear() # Clear list widget ở đây
+    #     self.file_paths = {"FE": None, "BE": None, "antagonize": None, "BaoCaoTongHopDoanhThu": None}
+    #     self.file_data = {}
+    #     dir = QDir(folder_path)
+    #     dir.setFilter(QDir.Files | QDir.NoDotAndDotDot)
+    #     dir.setSorting(QDir.Name)
+    #     entry_list = dir.entryList(["*.xlsx", "*.xls"])
+
+    #     files_to_load = []
+    #     for entry in entry_list:
+    #         file_path = os.path.join(folder_path, entry)
+    #         print(f"Tìm thấy file: {entry}, đường dẫn: {file_path}")
+    #         if "FE" in entry and self.file_paths["FE"] is None:
+    #             self.file_paths["FE"] = file_path
+    #             files_to_load.append(("FE", file_path))
+    #         elif "BE" in entry and self.file_paths["BE"] is None:
+    #             self.file_paths["BE"] = file_path
+    #             files_to_load.append(("BE", file_path))
+    #         elif "antagonize" in entry and self.file_paths["antagonize"] is None:
+    #             self.file_paths["antagonize"] = file_path
+    #             files_to_load.append(("antagonize", file_path))
+    #         elif "BaoCaoTongHopDoanhThu" in entry and self.file_paths["BaoCaoTongHopDoanhThu"] is None:
+    #             self.file_paths["BaoCaoTongHopDoanhThu"] = file_path
+    #             files_to_load.append(("BaoCaoTongHopDoanhThu", file_path))
+
+    #     print(f"Đường dẫn file FE: {self.file_paths['FE']}")
+    #     print(f"Đường dẫn file BE: {self.file_paths['BE']}")
+    #     print(f"Đường dẫn file antagonize: {self.file_paths['antagonize']}")
+    #     print(f"Đường dẫn file BaoCaoTongHopDoanhThu: {self.file_paths['BaoCaoTongHopDoanhThu']}")
+
+    #     if files_to_load:
+    #         self.loading_gif.show_gif()
+    #         self.workers = []
+    #         for name, path in files_to_load:
+    #             worker = DataReaderWorker(path)
+    #             worker.data_ready.connect(self.handle_data_ready_all)
+    #             worker.error_occurred.connect(self.handle_read_error)
+    #             self.workers.append(worker)
+    #             worker.start()
+    #     else:
+    #         QMessageBox.warning(self, "Cảnh báo", "Không tìm thấy file FE hoặc BE trong thư mục.")
 
     @Slot(str, pd.DataFrame)
     def handle_data_ready_all(self, file_name, data):

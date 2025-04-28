@@ -78,12 +78,8 @@ class CheckTicketsForm(QWidget):
             # self.load_data_to_table(dic_excel['Tổng hợp FE_BE'])
             # self.load_data_to_table(dic_excel)
             # self.load_data_to_table(dic_excel['Đối soát phí thu']) 
-            self.load_data_to_table(dic_excel['KQ thu phí nguội']) 
+            self.load_data_to_table(dic_excel['Sắp xếp xe FE-BE']) 
             
-
-
-            # Xuất dữ liệu ra file Excel bằng pandas
-            # df = pd.DataFrame(data_BE_vs_BE)  # Chuyển dữ liệu thành DataFrame
             try:
                 
                 # Mở file Excel ẩn để trang trí cho nhanh

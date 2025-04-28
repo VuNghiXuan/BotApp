@@ -15,9 +15,9 @@ import numpy as np
 from vunghixuan.bot_station.check_cost import CheckCost
 # from vunghixuan.bot_station.to_excel import ExcelWriter
 import xlwings as xw
-import threading
-import multiprocessing
+
 from vunghixuan.bot_station.to_excel import ExcelWithTOC
+from vunghixuan.bot_station.nomal_fe_be import NoMalFEBE
 
 class DataComparisonWorker(QObject):
     finished = Signal()
@@ -38,19 +38,7 @@ class DataComparisonWorker(QObject):
         else:
             return None
 
-    # Loại bỏ các dòng nan
-    def clear_nan_rows_from_colname(self, df, col_name):
-        """
-        Hàm này mục đích để loại bỏ các dòng cuối, như:
-         - Dòng thời gian thống kê, chữ ký
-         - Chọn cột có đầy đủ dữ liệu nhất và không chứa các các giá trị này :'thời gian thống kê, chữ ký'
-          """
-        # Chuyển đổi sang kiểu chuỗi
-        df[col_name] = df[col_name].astype(str)
-        # Loại bỏ các dòng có giá trị 'nan' trong cột chỉ định
-        df_cleaned = df[df[col_name] != 'nan'].copy()
-        
-        return df_cleaned
+    
 
     def _load_and_standardize_fe(self, df, col_name):
         if df is not None and col_name in df.columns:
@@ -58,6 +46,10 @@ class DataComparisonWorker(QObject):
             df[col_name] = df[col_name].astype(str)
             # Loại bỏ các dòng có giá trị 'nan' trong cột chỉ định
             df_cleaned = df[df[col_name] != 'nan'].copy()
+            # Thêm dấu nháy đơn nếu giá trị không phải là 'nan'
+            # print(df_cleaned[col_name].head(20))
+            df_cleaned[col_name] = df_cleaned[col_name].apply(lambda x: "'" + x if pd.notna(x) else x)
+
             
             return df_cleaned
         elif df is None:
@@ -73,8 +65,11 @@ class DataComparisonWorker(QObject):
             df[col_name] = df[col_name].astype(str)
             # Loại bỏ các dòng có giá trị 'nan' trong cột chỉ định
             df_cleaned = df[df[col_name] != 'nan'].copy()
-            # Thêm dấu nháy đơn ở đầu chuỗi (nếu BE cần)
-            df_cleaned[col_name] = "'" + df_cleaned[col_name]
+            # Thêm dấu nháy đơn nếu giá trị không phải là 'nan'
+            # print(df_cleaned[col_name].head(20))
+            df_cleaned[col_name] = df_cleaned[col_name].apply(lambda x: "'" + x if pd.notna(x) else x)
+
+
             
             return df_cleaned
         elif df is None:
@@ -192,10 +187,14 @@ class DataComparisonWorker(QObject):
         if len(df_list) != 2:
             print("Lỗi: df_list phải chứa đúng hai DataFrame.")
             return pd.DataFrame()
+        
+        
 
         df_fe = df_list[0].copy()
         df_be = df_list[1].copy()
 
+       
+        
         if ma_giao_dich_col not in df_fe.columns or ma_giao_dich_col not in df_be.columns:
             print(f"Lỗi: Cột '{ma_giao_dich_col}' không tồn tại trong một hoặc cả hai DataFrame.")
             return pd.DataFrame()
@@ -266,15 +265,16 @@ class DataComparisonWorker(QObject):
         return final_df
 
     # Chuân hoá Sheet tổng hợp dữ liệu
-    def get_sh_TongHop(self, df_list):
+    def merge_FE_BE(self, df_list):
         col_name = 'Mã giao dịch'
         colname_fe = ['Số xe đăng ký', 'Mã thẻ','Phí thu', 'Làn','Ngày giờ', 'Loại vé']
         colname_be = ['Biển số xe', 'Số etag', 'Loại giá vé', 'Tiền bao gồm thuế', 'Thời gian qua trạm', 'Làn']
         sum_col_fe = ['Phí thu']
         sum_col_be = ['Tiền bao gồm thuế']
         
+        
         # Sheet Tổng hợp dữ liệu
-        aggregated_df = self.summarize_data(
+        df_FE_BE = self.summarize_data(
             df_list,
             colname_fe,
             colname_be,
@@ -294,12 +294,9 @@ class DataComparisonWorker(QObject):
             ? Có cần thêm cột 'Hoàn tiền' để làm sao cho BE và FE khớp số ==> Nghĩa là để cột 'chênh lệch phí thu' = 0 VNĐ
         """
      
-        return aggregated_df
+        return df_FE_BE
 
-    
-
-
-    def run(self):
+    def load_and_standardize_fe_be(self):
         try:
             if self.fe_data is None or self.be_data is None:
                 raise ValueError("Không có dữ liệu FE hoặc BE để so sánh.")            
@@ -312,21 +309,118 @@ class DataComparisonWorker(QObject):
                 raise ValueError("Cột 'mã giao dịch' không tồn tại trong một hoặc cả hai file.")
 
             # Chuẩn hóa cột 'Mã giao dịch' cho FE và BE
-            fe_processed = self._load_and_standardize_fe(self.fe_data.copy(), col_name)
-            be_processed = self._load_and_standardize_be(self.be_data.copy(), col_name)
+            col_names_FE = ['Số xe đăng ký'] # Không cần chuẩn hoá cột 'Mã giao dịch' và , 'Mã thẻ': có sẵn dấu ' rồi
+            fe_processed = self.fe_data.copy()
+            for name in col_names_FE:
+                fe_processed = self._load_and_standardize_fe(fe_processed, name)
             
-            # Lấy dữ liệu cho Sheet Tổng hợp
-            df_list = [fe_processed, be_processed]
-            # df_list = [self.fe_data, self.be_data]
-            aggregated_df = self.get_sh_TongHop(df_list)
+            col_names_BE = ['Mã giao dịch', 'Biển số xe', 'Số etag']
+            be_processed = self.be_data.copy()
+            for name in col_names_BE:                
+                be_processed = self._load_and_standardize_be(be_processed, name)
+            
+            # # Chuẩn hoá lại file gốc
+            # self.fe_data = fe_processed
+            # self.be_data = be_processed
+            return fe_processed, be_processed
+        except Exception as e:
+            print ("Lỗi: ",e)
+    
+    def add_standard_car_license(self, df):
+        """
+        Chuẩn hóa cột biển số xe từ DataFrame có hai cột 'Số xe đăng ký' và 'BE_Biển số xe'.
+
+        Args:
+            df (pd.DataFrame): DataFrame chứa hai cột biển số xe.
+
+        Returns:
+            pd.DataFrame: DataFrame với cột 'Biển số chuẩn'.
+        """
+        df_copy = df.copy()
+
+        # 1. Lấy giá trị biển số từ cột FE nếu không phải NaN
+        df_copy['Biển số chuẩn'] = df_copy['Số xe đăng ký'].where(pd.notna(df_copy['Số xe đăng ký']), df_copy['BE_Biển số xe'])
+
+        # 2. Loại bỏ dấu nháy đơn ở đầu chuỗi (nếu có)
+        # df_copy['Biển số chuẩn'] = df_copy['Biển số chuẩn'].str.lstrip("'")
+
+        # 3. Loại bỏ các ký tự không phải chữ và số (trừ khoảng trắng nếu cần)
+        df_copy['Biển số chuẩn'] = df_copy['Biển số chuẩn'].str.replace(r"[^a-zA-Z0-9']", '', regex=True)
+
+         # 4. Bỏ chữ 'T' hoặc 'V' ở cuối nếu có
+        def remove_tv_suffix(bien_so):
+            if isinstance(bien_so, str) and len(bien_so) > 0 and bien_so[-1] in ['T', 'V']:
+                return bien_so[:-1]
+            return bien_so
+
+        df_copy['Biển số chuẩn'] = df_copy['Biển số chuẩn'].apply(remove_tv_suffix)
+        df_copy = self.add_standard_lan(df_copy)
+
+        return df_copy
+
+    def add_standard_lan(self, df):
+        """
+        Chuẩn hóa cột làn dựa vào 'Làn' và 'BE_Làn'.
+
+        Args:
+            df (pd.DataFrame): DataFrame chứa cột 'Làn' và 'BE_Làn'.
+
+        Returns:
+            pd.DataFrame: DataFrame với cột 'Làn chuẩn'.
+        """
+        df_copy = df.copy()
+        df_copy['Làn chuẩn'] = np.nan  # Khởi tạo cột kết quả
+
+        # Xử lý khi có dữ liệu BE_Làn
+        mask_be_lan = pd.notna(df_copy['BE_Làn'])
+        df_copy.loc[mask_be_lan, 'Làn chuẩn'] = df_copy.loc[mask_be_lan, 'BE_Làn'].astype(str).str.split('(').str[0].str.strip()
+
+        # Xử lý khi không có dữ liệu BE_Làn, sử dụng cột Làn
+        mask_lan_only = pd.isna(df_copy['BE_Làn']) & pd.notna(df_copy['Làn'])
+        df_copy.loc[mask_lan_only, 'Làn'] = df_copy.loc[mask_lan_only, 'Làn'].astype(str).str.lstrip('0')
+        df_copy.loc[mask_lan_only, 'Làn chuẩn'] = 'Làn ' + df_copy.loc[mask_lan_only, 'Làn']
+
+
+        return df_copy
+    
+
+    
+    def run(self):
+        try:
+            "1. Chuẩn hoá file fe và be"
+
+            nomal_fe_be = NoMalFEBE(self.fe_data, self.be_data)
+            fe_processed, be_processed, df_FE_BE = nomal_fe_be.nomal_fe_be()
+           
+            # # Nhóm df_fe_be theo biển số chuẩn
+            
+            df_group_cars_time = nomal_fe_be.group_cars_and_time_from_df_FE_BE(df_FE_BE)
+            # Lọc các dòng mà giá trị trong cột 'Thời gian chuẩn' là NaN
+            nan_time_df = df_FE_BE[df_FE_BE['Thời gian chuẩn'].isna()]
+
+            # In ra các cột 'Ngày giờ', 'BE_Thời gian qua trạm' và 'Thời gian chuẩn' của các dòng đã lọc
+            print(nan_time_df[['Ngày giờ', 'BE_Thời gian qua trạm', 'Thời gian chuẩn']])
+            
+            "2.  Nhóm các biển số xe lại: Dễ tìm ra các xe vào làn nào ra làn nào"
+            df_group_cars_time = nomal_fe_be.add_summary_columns(df_group_cars_time)
+            
+
+            """
+            ** Tạo Quy trình kiểm soát như sau:
+            B1: Nhóm các biển số xe lại: Dễ tìm ra các xe vào làn nào ra làn nào
+            """
+            
+            # print(df_FE_BE[(df_FE_BE['BE_Biển số đăng ký']) & (df_FE_BE['Số xe đăng ký'])])
 
             
             # Kiểm tra các điều kiện về chi phí: bằng hàm tiên đoán nguyên nhân chênh lệch phí
-            add_col_names = ['Phí khớp FE', 'Phí khớp BE', 'Chênh lệch khớp', 'Nguyên nhân']
-            check_cost = CheckCost(add_col_names)
-            df_predict_fee = check_cost.predict_fee_differentials(aggregated_df.copy())            
+            """ Tạm bỏ 
+            
+            check_cost = CheckCost()
+            df_predict_fee = check_cost.predict_fee_differentials(df_FE_BE.copy())            
 
             # B1: Lọc ra các xe làm cho chi phí !=0 để tìm nguyên nhân và tiên đoán chênh lệch
+            "Sắp xếp xe FE-BE"
             df_fee_diff = check_cost.fee_diff_filtered_cars(df_predict_fee.copy())
             
             # sh xác định nguyên nhân chênh lệch do phí nguội
@@ -344,7 +438,7 @@ class DataComparisonWorker(QObject):
             df_diff_free_cam = check_cost.find_multiple_camera_reads_with_fee_discrepancy(df_fillter_predict_cam)
             print(df_diff_free_cam)
 
-           
+            col_name = 'Mã giao dịch'
             # Lấy các mã giao dịch chỉ có trong file FE mà không có trong file BE
             mgd_not_be = fe_processed[~fe_processed[col_name].isin(be_processed[col_name])]            
 
@@ -352,33 +446,35 @@ class DataComparisonWorker(QObject):
             # Lấy các dòng có mã giao dịch là ' 0' sau khi loại bỏ 'nan'
             fe_mgd_has_value_0_df = self.get_mgd_has_value_0(fe_processed, col_name)
             be_mgd_has_value_0_df = self.get_mgd_has_value_0(be_processed, col_name)
-
+            """
             # Xuất Excel
             
             # dic_excel = {'path_file': self.output_dir}
-
+            col_name = 'Mã giao dịch'
             sheets_and_data = {
                 # Phần thu thập dữ liệu
                 'FE': self.add_summary_row(fe_processed, 'Phí thu', col_name),
                 'BE': self.add_summary_row(be_processed, 'Tiền bao gồm thuế', col_name),
-                'Gộp FE_BE': aggregated_df,
+                'Gộp FE_BE': df_FE_BE,
                 'DoanhThuVETC': self.revenue_data,
                 'DoiSoatGDVETC' : self.antagonize_data,
 
-                # Phần phân loại xe nghi vấn
-                'Xe gây CL phí': df_fee_diff,
-                'Xe trùng GD': df_fillter_predict_cam,
-                'Có FE không có BE': self.add_summary_row(mgd_not_be, 'Phí thu', col_name),
-                'Xe UTToanQuoc_FE': self.add_summary_row(fe_mgd_has_value_0_df, 'Phí thu', col_name),
-                'Xe UTToanQuoc_BE': self.add_summary_row(be_mgd_has_value_0_df, 'Tiền bao gồm thuế', col_name),
+                'Sắp xếp xe FE-BE': df_group_cars_time,
 
-                # Phần tiên đoán và loại duy dần
-                'Chênh lệch phí thu': df_predict_fee,
+                # # Phần phân loại xe nghi vấn
+                # 'Xe gây CL phí': df_fee_diff,
+                # 'Xe trùng GD': df_fillter_predict_cam,
+                # 'Có FE không có BE': self.add_summary_row(mgd_not_be, 'Phí thu', col_name),
+                # 'Xe UTToanQuoc_FE': self.add_summary_row(fe_mgd_has_value_0_df, 'Phí thu', col_name),
+                # 'Xe UTToanQuoc_BE': self.add_summary_row(be_mgd_has_value_0_df, 'Tiền bao gồm thuế', col_name),
 
-                # Phần kết quả
+                # # Phần tiên đoán và loại duy dần
+                # 'Chênh lệch phí thu': df_predict_fee,
+
+                # # Phần kết quả
                 
-                'KQ thu phí nguội': df_evasion_result,
-                'KQ phí trùng GD': df_diff_free_cam,
+                # 'KQ thu phí nguội': df_evasion_result,
+                # 'KQ phí trùng GD': df_diff_free_cam,
             }
 
             # sheet_names = list(sheets_and_data.keys())
@@ -400,197 +496,4 @@ class DataComparisonWorker(QObject):
             print(e)
             # self.error_occurred.emit(f"Lỗi không xác định: {e}")
             # self.finished.emit()
-
-# def run(self):
-    #     try:
-    #         if self.fe_data is None or self.be_data is None:
-    #             raise ValueError("Không có dữ liệu FE hoặc BE để so sánh.")
-
-    #         col_name = 'Mã giao dịch'
-    #         id_col_name_in_fe = self.get_id_column_name(col_name, self.fe_data.columns)
-    #         id_col_name_in_be = self.get_id_column_name(col_name, self.be_data.columns)
-    #         if id_col_name_in_fe is None or id_col_name_in_be is None:
-    #             raise ValueError("Cột 'mã giao dịch' không tồn tại trong một hoặc cả hai file.")
-
-    #         # Chuẩn hóa cột 'Mã giao dịch' cho FE và BE
-    #         fe_processed = self._load_and_standardize_fe(self.fe_data.copy(), col_name)
-    #         be_processed = self._load_and_standardize_be(self.be_data.copy(), col_name)
-
-    #         # Lấy dữ liệu cho Sheet Tổng hợp
-    #         df_list = [fe_processed, be_processed]
-    #         aggregated_df = self.get_sh_TongHop(df_list)
-
-    #         # Tiên đoán nguyên nhân chênh lệch ban đầu: Kiểm tra các điều kiện về chi phí
-    #         check_cost = CheckCost()
-    #         df_predict_fee = check_cost.check_cost_station(aggregated_df.copy())
-    #         # print(df_predict_fee)
-
-            
-
-    #         # Lọc ra các xe làm cho chi phí !=0
-    #         df_fee_diff = check_cost.fee_diff_filtered_cars(df_predict_fee.copy())
-    #         print(df_fee_diff)
-
-    #         # Xác định nguyên nhân chênh lệch do phạt nguội: Lọc xe thu phí nguội: Chênh 
-    #         df_evasion_result = check_cost.filter_evasion_toll_records(df_fee_diff.copy())
-
-
-    #         # Lấy các mã giao dịch chỉ có trong file FE mà không có trong file BE
-    #         mgd_not_be = fe_processed[~fe_processed[col_name].isin(be_processed[col_name])]
-
-    #         # Lấy các dòng có mã giao dịch là ' 0' sau khi loại bỏ 'nan'
-    #         fe_mgd_has_value_0_df = self.get_mgd_has_value_0(fe_processed, col_name)
-    #         be_mgd_has_value_0_df = self.get_mgd_has_value_0(be_processed, col_name)
-
-    #         dic_excel= {
-    #             'path_file': self.output_dir
-    #         }
-
-    #         excel_writer = ExcelWriter(self.output_dir)
-            
-
-    #         sh_name = 'FE'
-    #         fe_processed = self.add_summary_row(fe_processed, 'Phí thu', col_name)
-    #         excel_writer.write_data_to_excel(fe_processed, sh_name)
-    #         dic_excel[sh_name] = fe_processed
-            
-    #         sh_name = 'BE'
-    #         be_processed = self.add_summary_row(be_processed, 'Tiền bao gồm thuế', col_name)
-    #         excel_writer.write_data_to_excel(be_processed, sh_name)
-    #         dic_excel[sh_name] = be_processed
-
-    #         sh_name = 'Tổng hợp FE_BE'
-    #         excel_writer.write_data_to_excel(aggregated_df, sh_name, has_total_row=True, total_columns=['Phí thu', 'BE_Tiền bao gồm thuế', 'Chênh lệch (Phí thu)'])
-    #         dic_excel[sh_name] = aggregated_df
-
-    #         # Sắp xếp và nhớm xe cùng biển: Để tiên đoán chênh lệch phí
-    #         sh_name = 'Tiên đoán CL Phí'
-    #         excel_writer.write_data_to_excel(df_predict_fee, sh_name, has_total_row=True, total_columns=['Phí thu', 'BE_Tiền bao gồm thuế', 'Chênh lệch (Phí thu)'])
-    #         dic_excel[sh_name] = df_predict_fee
-
-    #         # Xác định nguyên nhân chênh lệch do phạt nguội: Lọc xe thu phí nguội: Chênh 
-    #         sh_name = 'Xác định xe thu nguội'
-    #         excel_writer.write_data_to_excel(df_evasion_result, sh_name, has_total_row=True, total_columns=['Phí thu', 'Tiền bao gồm thuế', 'Chênh lệch (Phí thu)'])
-    #         dic_excel[sh_name] = df_evasion_result
-
-    #         # Sắp xếp và nhớm xe cùng biển, mà cột Chênh lệch phí thu >0
-    #         excel_writer.write_data_to_excel(df_fee_diff, 'Lọc xe CL phí thu')
-    #         dic_excel['Lọc xe CL phí thu'] = df_fee_diff
-
-    #         # Giao địch chỉ có FE
-    #         excel_writer.write_data_to_excel(mgd_not_be, 'GiaoDich_ko_tồn_tại_BE', has_total_row=True, total_columns=['Phí thu'])
-    #         dic_excel['GiaoDich_ko_tồn_tại_BE'] = mgd_not_be
-
-    #         excel_writer.write_data_to_excel(fe_mgd_has_value_0_df, 'LoaiVe_UT_ToanQuoc_FE', has_total_row=True, total_columns=['Phí thu'])
-    #         dic_excel['LoaiVe_UT_ToanQuoc_FE'] = fe_mgd_has_value_0_df
-
-    #         excel_writer.write_data_to_excel(be_mgd_has_value_0_df, 'LoaiVe_UT_ToanQuoc_BE', has_total_row=True, total_columns=['Tiền bao gồm thuế'])
-    #         dic_excel['LoaiVe_UT_ToanQuoc_BE'] = be_mgd_has_value_0_df
-
-    #         return dic_excel
-
-    #     except ValueError as ve:
-    #         print(ve)
-    #     except Exception as e:
-    #         print(e)
-
-
-# # vunghixuan/bot_station/check_data_BE_vs_BE.py
-# # -*- coding: utf-8 -*-
-# from PySide6.QtWidgets import (
-#     QWidget, QVBoxLayout, QHBoxLayout, QMessageBox
-# )
-# from vunghixuan.bot_station.table_data import TableData
-# from vunghixuan.bot_station.file_list_form import FileListForm
-# from PySide6.QtCore import Slot, QThread, Signal, QObject
-# import pandas as pd
-# import os
-# from vunghixuan.bot_station.load_gif_file import LoadingGifLabel
-# import platform
-# import subprocess
-
-# class DataComparisonWorker(QObject):
-#     finished = Signal()
-#     result_ready = Signal(pd.DataFrame, str)
-#     error_occurred = Signal(str)
-
-#     def __init__(self, fe_data: pd.DataFrame, be_data: pd.DataFrame, output_dir: str):
-#         super().__init__()
-#         self.fe_data = fe_data
-#         self.be_data = be_data
-#         self.output_dir = output_dir
-    
-#     def get_id_column_name(self, col_name, pd_columns):
-#         if col_name in pd_columns:
-#             return pd_columns.get_loc(col_name)
-#         else:
-#             return None
-    
-#     def replace_single_quote(self, col_name):
-#         if self.fe_data is not None and col_name in self.fe_data.columns:
-#             # Sử dụng .astype(str) để đảm bảo tất cả các ô đều được xử lý như chuỗi
-#             self.fe_data[col_name] = self.fe_data[col_name].astype(str).str.replace("'", "")
-#         elif self.fe_data is None:
-#             print("Chưa có dữ liệu FE được tải.")
-#         else:
-#             print(f"Không tìm thấy cột '{col_name}' trong dữ liệu FE.")
-
-#     def get_fe_data(self):
-#         return self.fe_data
-
-#     def open_file(filepath):
-#         if platform.system() == "Windows":
-#             os.startfile(filepath)
-#         elif platform.system() == "Darwin":
-#             subprocess.Popen(["open", filepath])
-#         elif platform.system() == "Linux":
-#             subprocess.Popen(["xdg-open", filepath])
-#         else:
-#             print(f"Không hỗ trợ mở file trên hệ điều hành: {platform.system()}")
-
-#     def run(self):
-#         try:
-#             if self.fe_data is None or self.be_data is None:
-#                 raise ValueError("Không có dữ liệu FE hoặc BE để so sánh.")
-
-#             # Đảm bảo cột 'mã giao dịch' tồn tại trong cả hai DataFrame
-#             col_name = 'Mã giao dịch'
-#             id_col_name_in_fe = self.get_id_column_name(col_name, self.fe_data.columns)
-#             id_col_name_in_be = self.get_id_column_name(col_name, self.be_data.columns)
-#             if id_col_name_in_fe is None or id_col_name_in_be is None:            
-#                 raise ValueError("Cột 'mã giao dịch' không tồn tại trong một hoặc cả hai file.")
-            
-#             # Thay thế dấu ' trong cột 'Mã giao dịch' cho file FE
-#             self.replace_single_quote(col_name)
-#             # Lấy các mã giao dịch chỉ có trong file FE mà không có trong file BE
-#             fe_only = self.fe_data[~self.fe_data[col_name].isin(self.be_data[col_name])]
-
-#             if not fe_only.empty:
-#                 # result_filename = "Kết quả đối soát.xlsx"
-#                 # result_path = os.path.join(self.output_dir, result_filename)
-#                 # if os.path.exists(result_path):
-#                 fe_only.to_excel(self.output_dir, index=False)
-#                 self.result_ready.emit(fe_only, fe_only)
-#                 return fe_only
-
-#                 # # Tạo DataFrame kết quả với cấu trúc giống file BE
-#                 # be_columns = self.be_data.columns.tolist()
-#                 # result_df = pd.DataFrame(fe_only.reindex(columns=be_columns))
-#                 # result_filename = "Kết quả đối soát.xlsx"
-#                 # result_path = os.path.join(self.output_dir, result_filename)
-#                 # if os.path.exists(result_path):
-#                 #     result_df.to_excel(result_path, index=False)
-#                 #     self.result_ready.emit(result_df, result_path)
-#                 # else:
-#                 #     print(f'Đường dẫn "{result_path}" không tồn tại:')
-#             else:
-#                 self.result_ready.emit(pd.DataFrame(columns=self.be_data.columns), None) # Phát DataFrame rỗng
-
-#             self.finished.emit()
-#         except ValueError as ve:
-#             self.error_occurred.emit(str(ve))
-#             self.finished.emit()
-#         except Exception as e:
-#             self.error_occurred.emit(f"Lỗi không xác định: {e}")
-#             self.finished.emit()
 

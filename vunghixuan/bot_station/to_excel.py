@@ -2,20 +2,51 @@
 import pandas as pd
 import xlwings as xw
 import os
-
+import psutil
+from PySide6.QtWidgets import QApplication, QMessageBox
 
 
 
 class ExcelWithTOC:
     def __init__(self, output_path, sheets_and_data):
+        
         self.output_path = output_path
         self.app = xw.App(visible=False)
-        self.wb = self.app.books.add()
+        self.wb = None  # Initialize wb to None
         self.toc_sheet_name = "Mục Lục"
-        self.toc_sheet = self.wb.sheets.add(self.toc_sheet_name)
-        self.sheets_and_data = sheets_and_data
-        self.add_sheet_with_data()
-        
+        self.toc_sheet = None # Initialize toc_sheet to None
+
+        if self.is_excel_file_open(self.output_path):
+            self.show_file_open_dialog()
+        else:
+            self.wb = self.app.books.add()
+            self.toc_sheet = self.wb.sheets.add(self.toc_sheet_name)
+            self.sheets_and_data = sheets_and_data
+            self.add_sheet_with_data()
+
+    def is_excel_file_open(self, file_path):
+        """Kiểm tra xem file Excel có đang được mở không."""
+        for proc in psutil.process_iter(['name', 'open_files']):
+            if proc.info['name'].lower() in ['excel.exe', 'soffice.bin']:  # Check for Excel and LibreOffice Calc
+                if proc.info['open_files']:
+                    for open_file in proc.info['open_files']:
+                        if os.path.abspath(open_file.path) == os.path.abspath(file_path):
+                            return True
+        return False
+
+    def show_file_open_dialog(self):
+        """Hiển thị hộp thoại thông báo file đang mở."""
+        app = QApplication.instance()
+        if app is None:
+            app = QApplication([])
+        msg_box = QMessageBox()
+        msg_box.setIcon(QMessageBox.Warning)
+        msg_box.setText(f"File '{os.path.basename(self.output_path)}' đang được mở. Vui lòng đóng file trước khi tiếp tục.")
+        msg_box.setWindowTitle("Cảnh báo")
+        msg_box.exec()
+        # Optionally, you can raise an exception or exit the program here
+        raise Exception(f"File '{os.path.basename(self.output_path)}' đang được mở.")
+
 
     def __enter__(self):
         "with ExcelWithTOC(self.output_dir, sheets_and_data) as excel_toc: "

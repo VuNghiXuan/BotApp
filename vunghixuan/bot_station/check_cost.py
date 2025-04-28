@@ -2,7 +2,8 @@ import pandas as pd
 import numpy as np
 
 class CheckCost:
-    def __init__(self, add_col_names):
+    def __init__(self):
+        add_col_names = ['Phí khớp FE', 'Phí khớp BE', 'Chênh lệch khớp', 'Nguyên nhân']
         self.fee_matching_FE = add_col_names[0] # Thêm cột phí điều chỉnh FE
         self.fee_matching_BE = add_col_names[1] # Thêm cột phí điều chỉnh BE
         self.fee_matching_diff = add_col_names[2]
@@ -87,8 +88,8 @@ class CheckCost:
             merged_df = merged_df.drop(columns=['Chênh lệch (Phí thu)'])
 
         # Chuẩn hóa dữ liệu ban đầu
-        merged_df['Số xe đăng ký'] = merged_df['Số xe đăng ký'].str.strip("' ").replace('', np.nan)
-        merged_df['BE_Biển số xe'] = merged_df['BE_Biển số xe'].str.strip("' ").replace('', np.nan)
+        # merged_df['Số xe đăng ký'] = merged_df['Số xe đăng ký'].str.strip("' ").replace('', np.nan)
+        # merged_df['BE_Biển số xe'] = merged_df['BE_Biển số xe'].str.strip("' ").replace('', np.nan)
         merged_df['Phí thu'] = pd.to_numeric(merged_df['Phí thu'], errors='coerce').fillna(0)
         merged_df['BE_Tiền bao gồm thuế'] = pd.to_numeric(merged_df['BE_Tiền bao gồm thuế'], errors='coerce').fillna(0)
 
@@ -96,9 +97,9 @@ class CheckCost:
         merged_df = self._nomal_time(merged_df, 'Ngày giờ')
         merged_df = self._nomal_time(merged_df, 'BE_Thời gian qua trạm')
 
-        # Tạo cột biển số xe chuẩn (nếu chưa có)
-        if 'Biển số xe chuẩn' not in merged_df.columns:
-            merged_df['Biển số xe chuẩn'] = merged_df['Số xe đăng ký'].fillna(merged_df['BE_Biển số xe'])
+        # # Tạo cột biển số chuẩn (nếu chưa có)
+        # if 'Biển số chuẩn' not in merged_df.columns:
+        #     merged_df['Biển số chuẩn'] = merged_df['Số xe đăng ký'].fillna(merged_df['BE_Biển số xe'])
 
         # Tính toán chênh lệch
         merged_df['Chênh lệch (Phí thu)'] = merged_df['Phí thu'] - merged_df['BE_Tiền bao gồm thuế']
@@ -125,7 +126,7 @@ class CheckCost:
         # Trường hợp 4: FE có tiền thu, BE không có giao dịch hoặc tiền bằng 0
         condition_fe_co_tien_be_khong = (merged_df['Phí thu'] > 0) & (merged_df['BE_Biển số xe'].isnull() | (merged_df['BE_Tiền bao gồm thuế'] == 0))
         merged_df.loc[condition_fe_co_tien_be_khong, 'Ghi chú'] = 'Giao dịch chỉ có FE'
-        merged_df.loc[condition_fe_co_tien_be_khong, 'Tiên đoán chênh lệch'] = 'Nghi vấn lỗi quét trùng lặp'
+        merged_df.loc[condition_fe_co_tien_be_khong, 'Tiên đoán chênh lệch'] = 'Nghi vấn lỗi trùng lặp'
 
 
         # Trường hợp 5: Chỉ có giao dịch ở BE 
@@ -141,7 +142,7 @@ class CheckCost:
         merged_df.loc[condition_khop, 'Tiên đoán chênh lệch'] = 'Khớp'
 
         # Sắp xếp kết quả để dễ theo dõi
-        merged_df = merged_df.sort_values(by=['Biển số xe chuẩn', 'Ngày giờ', 'BE_Thời gian qua trạm'])
+        merged_df = merged_df.sort_values(by=['Biển số chuẩn', 'Ngày giờ', 'BE_Thời gian qua trạm'])
 
         return merged_df
     # """
@@ -217,7 +218,7 @@ class CheckCost:
         # Thêm cột xác định nguyên nhân
         evasion_df[self.fee_matching_diff] = evasion_df['BE_Tiền bao gồm thuế']- evasion_df['BE_Tiền bao gồm thuế']
         # Thêm cột xác định nguyên nhân
-        evasion_df[self.reason] = 'Bổ sung Phí nguội cho FE '
+        evasion_df[self.reason] = 'Kiểm tra Chứng từ MTC và Bổ sung Phí nguội cho FE'
 
         evasion_df = self.add_summary_row(evasion_df, ['Phí thu', 'BE_Tiền bao gồm thuế', 'Chênh lệch (Phí thu)',self.fee_matching_FE, self.fee_matching_BE, self.fee_matching_diff])
         
@@ -237,14 +238,14 @@ class CheckCost:
             pd.DataFrame: DataFrame chứa tất cả các bản ghi của các xe có chênh lệch phí thu khác 0.
         """
         discrepancy_df = checked_df[checked_df['Chênh lệch (Phí thu)'] != 0]
-        discrepancy_vehicles = pd.concat([discrepancy_df['Biển số xe chuẩn'],
+        discrepancy_vehicles = pd.concat([discrepancy_df['Biển số chuẩn'],
                                         discrepancy_df['Số xe đăng ký'],
                                         discrepancy_df['BE_Biển số xe']]).unique()
         discrepancy_vehicles_cleaned = pd.Series(discrepancy_vehicles).dropna().unique()
 
         # Tạo một DataFrame mới chứa tất cả các bản ghi của các xe có biển số trong danh sách discrepancy_vehicles_cleaned
         filtered_df = checked_df[
-            checked_df['Biển số xe chuẩn'].isin(discrepancy_vehicles_cleaned) |
+            checked_df['Biển số chuẩn'].isin(discrepancy_vehicles_cleaned) |
             checked_df['Số xe đăng ký'].isin(discrepancy_vehicles_cleaned) |
             checked_df['BE_Biển số xe'].isin(discrepancy_vehicles_cleaned)
         ].copy()
@@ -276,7 +277,7 @@ class CheckCost:
                         ghi_chu_multiple_fe = f'{ghi_chu_multiple_fe}; Nghi vấn FE tính phí nhiều lần' if ghi_chu_multiple_fe else 'Nghi vấn FE tính phí nhiều lần'
             return ghi_chu_multiple_fe.lstrip('; ')
 
-        grouped_fe = merged_df.groupby('Biển số xe chuẩn')
+        grouped_fe = merged_df.groupby('Biển số chuẩn')
         merged_df['Tiên đoán chênh lệch_multiple_fe'] = grouped_fe.apply(check_multiple_fe_charges).fillna('')
         merged_df['Tiên đoán chênh lệch'] = merged_df.apply(lambda row: f"{row['Tiên đoán chênh lệch']}; {row['Tiên đoán chênh lệch_multiple_fe']}".lstrip('; ') if row['Tiên đoán chênh lệch_multiple_fe'] else row['Tiên đoán chênh lệch'], axis=1)
         merged_df = merged_df.drop(columns=['Tiên đoán chênh lệch_multiple_fe'])
@@ -287,46 +288,78 @@ class CheckCost:
 
         return merged_df
 
-   
-
     def fillter_predict_multiple_camera_reads(self, df):
         """
         Lọc DataFrame để lấy các bản ghi của các xe mà cột 'Tiên đoán chênh lệch'
-        có giá trị chứa cụm từ 'Nghi vấn lỗi quét trùng lặp'.
-        
+        có giá trị chứa cụm từ 'Nghi vấn lỗi trùng lặp'. Sau đó, lấy biển số xe
+        và lọc ra tất cả các dòng có cùng biển số xe.
 
         Args:
         df (pd.DataFrame): DataFrame chứa thông tin đối soát phí.
-        Yêu cầu DataFrame có cột 'Biển số xe chuẩn' và 'Tiên đoán chênh lệch'.
-        
+        Yêu cầu DataFrame có cột 'Biển số chuẩn' và 'Tiên đoán chênh lệch'.
 
         Returns:
         pd.DataFrame: DataFrame chỉ chứa các bản ghi của các xe có 'Tiên đoán chênh lệch'
-        là 'Nghi vấn lỗi quét trùng lặp'.
+        là 'Nghi vấn lỗi trùng lặp' và tất cả các dòng khác có cùng biển số xe.
         """
-        if 'Tiên đoán chênh lệch' not in df.columns or 'Biển số xe chuẩn' not in df.columns:
-            print("Lỗi: DataFrame cần có cột 'Tiên đoán chênh lệch' và 'Biển số xe chuẩn'.")
+        if 'Tiên đoán chênh lệch' not in df.columns or 'Biển số chuẩn' not in df.columns:
+            print("Lỗi: DataFrame cần có cột 'Tiên đoán chênh lệch' và 'Biển số chuẩn'.")
             return pd.DataFrame()
+
+        # Lọc các dòng có 'Tiên đoán chênh lệch' là 'Nghi vấn lỗi trùng lặp'
+        nghi_van_df = df[df['Tiên đoán chênh lệch'] == 'Nghi vấn lỗi trùng lặp']
+
+        if nghi_van_df.empty:
+            return pd.DataFrame()
+
+        # Lấy danh sách các biển số xe có nghi vấn trùng lặp
+        bien_so_nghi_van = nghi_van_df['Biển số chuẩn'].unique()
+
+        # Lọc DataFrame ban đầu để lấy tất cả các dòng có biển số xe nằm trong danh sách nghi vấn
+        df_result = df[df['Biển số chuẩn'].isin(bien_so_nghi_van)].copy()
+
+        df_result = self.add_summary_row(df_result, ['Phí thu', 'BE_Tiền bao gồm thuế', 'Chênh lệch (Phí thu)'])
+
+        return df_result
+
+    # def fillter_predict_multiple_camera_reads(self, df):
+    #     """
+    #     Lọc DataFrame để lấy các bản ghi của các xe mà cột 'Tiên đoán chênh lệch'
+    #     có giá trị chứa cụm từ 'Nghi vấn lỗi trùng lặp'.
         
 
-        # Lọc các dòng có 'Tiên đoán chênh lệch' là 'Nghi vấn lỗi quét trùng lặp'
-        multiple_reads_df = df[df['Tiên đoán chênh lệch'] == 'Nghi vấn lỗi quét trùng lặp'].copy()        
-        multiple_reads_df = self.add_summary_row(multiple_reads_df, ['Phí thu', 'BE_Tiền bao gồm thuế', 'Chênh lệch (Phí thu)'])
+    #     Args:
+    #     df (pd.DataFrame): DataFrame chứa thông tin đối soát phí.
+    #     Yêu cầu DataFrame có cột 'Biển số chuẩn' và 'Tiên đoán chênh lệch'.
+        
+
+    #     Returns:
+    #     pd.DataFrame: DataFrame chỉ chứa các bản ghi của các xe có 'Tiên đoán chênh lệch'
+    #     là 'Nghi vấn lỗi trùng lặp'.
+    #     """
+    #     if 'Tiên đoán chênh lệch' not in df.columns or 'Biển số chuẩn' not in df.columns:
+    #         print("Lỗi: DataFrame cần có cột 'Tiên đoán chênh lệch' và 'Biển số chuẩn'.")
+    #         return pd.DataFrame()
+        
+
+    #     # Lọc các dòng có 'Tiên đoán chênh lệch' là 'Nghi vấn lỗi trùng lặp'
+    #     multiple_reads_df = df[df['Tiên đoán chênh lệch'] == 'Nghi vấn lỗi trùng lặp'].copy()        
+    #     multiple_reads_df = self.add_summary_row(multiple_reads_df, ['Phí thu', 'BE_Tiền bao gồm thuế', 'Chênh lệch (Phí thu)'])
 
 
-        return multiple_reads_df
+    #     return multiple_reads_df
 
     def find_multiple_camera_reads_with_fee_discrepancy(self, df):
         """
         Tìm các lỗi do camera đọc nhiều lần cho cùng 1 biển số gây chênh lệch phí.
         Lọc các giao dịch mà chỉ có thông tin phí thu (FE), không có thông tin phí
-        qua trạm (BE), được đánh dấu 'Nghi vấn lỗi quét trùng lặp', và nhóm theo
+        qua trạm (BE), được đánh dấu 'Nghi vấn lỗi trùng lặp', và nhóm theo
         biển số xe để xác định các trường hợp quét trùng.
         
 
         Args:
         df (pd.DataFrame): DataFrame chứa thông tin đối soát phí.
-        Yêu cầu DataFrame có các cột: 'Biển số xe chuẩn', 'Phí thu',
+        Yêu cầu DataFrame có các cột: 'Biển số chuẩn', 'Phí thu',
         'BE_Tiền bao gồm thuế', 'Ngày giờ', 'Làn', 'Tiên đoán chênh lệch'.
         
 
@@ -335,13 +368,13 @@ class CheckCost:
         nhiều lần gây chênh lệch phí, đã được sắp xếp theo biển số xe và thời gian.
         In ra thông tin chi tiết về các lỗi phát hiện.
         """
-        if not all(col in df.columns for col in ['Biển số xe chuẩn', 'Phí thu', 'BE_Tiền bao gồm thuế', 'Ngày giờ', 'Làn', 'Tiên đoán chênh lệch']):
-            print("Lỗi: DataFrame cần có các cột 'Biển số xe chuẩn', 'Phí thu', 'BE_Tiền bao gồm thuế', 'Ngày giờ', 'Làn', 'Tiên đoán chênh lệch'.")
+        if not all(col in df.columns for col in ['Biển số chuẩn', 'Phí thu', 'BE_Tiền bao gồm thuế', 'Ngày giờ', 'Làn', 'Tiên đoán chênh lệch']):
+            print("Lỗi: DataFrame cần có các cột 'Biển số chuẩn', 'Phí thu', 'BE_Tiền bao gồm thuế', 'Ngày giờ', 'Làn', 'Tiên đoán chênh lệch'.")
             return pd.DataFrame()
         
 
         # Lọc các giao dịch chỉ có phí thu và được đánh dấu lỗi camera
-        fe_only_multiple_reads = df[(df['Phí thu'] > 0) & (df['BE_Tiền bao gồm thuế'] == 0) & (df['Tiên đoán chênh lệch'] == 'Nghi vấn lỗi quét trùng lặp')].copy()
+        fe_only_multiple_reads = df[(df['Phí thu'] > 0) & (df['BE_Tiền bao gồm thuế'] == 0) & (df['Tiên đoán chênh lệch'] == 'Nghi vấn lỗi trùng lặp')].copy()
         
         
 
@@ -352,11 +385,11 @@ class CheckCost:
 
         # Chuyển đổi cột 'Ngày giờ' sang kiểu datetime để dễ dàng so sánh
         fe_only_multiple_reads['Ngày giờ'] = pd.to_datetime(fe_only_multiple_reads['Ngày giờ'], errors='coerce')
-        fe_only_multiple_reads = fe_only_multiple_reads.dropna(subset=['Ngày giờ']).sort_values(by=['Biển số xe chuẩn', 'Ngày giờ'])
+        fe_only_multiple_reads = fe_only_multiple_reads.dropna(subset=['Ngày giờ']).sort_values(by=['Biển số chuẩn', 'Ngày giờ'])
         
 
         # Nhóm theo biển số xe và kiểm tra các giao dịch liên tiếp
-        grouped = fe_only_multiple_reads.groupby('Biển số xe chuẩn')
+        grouped = fe_only_multiple_reads.groupby('Biển số chuẩn')
         suspicious_transactions = []
         
 
