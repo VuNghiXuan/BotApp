@@ -73,12 +73,12 @@ class CheckTicketsForm(QWidget):
         if fe_data is not None and be_data is not None:
             result_pd = DataComparisonWorker(fe_data, be_data, revenue_data, antagonize_data, output_path)
             dic_excel = result_pd.run()
-            print (dic_excel)
+            # print (dic_excel)
 
             # self.load_data_to_table(dic_excel['Tổng hợp FE_BE'])
             # self.load_data_to_table(dic_excel)
             # self.load_data_to_table(dic_excel['Đối soát phí thu']) 
-            self.load_data_to_table(dic_excel['Sắp xếp xe FE-BE']) 
+            self.load_data_to_table(dic_excel[list(dic_excel.keys())[-1]]) 
             
             try:
                 
