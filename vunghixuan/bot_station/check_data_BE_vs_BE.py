@@ -77,19 +77,36 @@ class DataComparisonWorker(QObject):
             # print([df_group_cars_time.columns.tolist()] + df_group_cars_time.values.tolist())
 
             
-            '2. Lấy danh sách xe ưu tiên và danh sách trả phí'
-            doi_soat_cp = DoiSoatPhi()
-            df_ko_thu_phi, df_tra_phi = doi_soat_cp.tach_nhom_xe_ko_thu_phi(df_group_cars_time)
-            data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'Xe-KhongThuPhi', df_ko_thu_phi)
-            data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'Xe-TraPhi', df_tra_phi)
+            # '2. Lấy danh sách xe ưu tiên và danh sách trả phí'
+            # doi_soat_cp = DoiSoatPhi()
+            # df_ko_thu_phi, df_tra_phi = doi_soat_cp.tach_nhom_xe_ko_thu_phi(df_group_cars_time.copy())
+            # data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'Xe-KhongThuPhi', df_ko_thu_phi)
+            # data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'Xe-TraPhi', df_tra_phi)
 
             # '3. Nhóm xe có chênh lệch phí do anten đọc nhiều lần'
-            # df_doi_soat_tra_phi = doi_soat_cp.doi_soat_phi(df_tra_phi)
-            # data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'DoiSoat-TraPhi', df_doi_soat_tra_phi)
+            # df_doi_soat_tra_phi = doi_soat_cp.kiem_tra_doc_nhieu_luot(df_tra_phi.copy())
+            # data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'NghiVan-DocNhieuLan', df_doi_soat_tra_phi)
+
+            # '4. Nhóm xe có chênh lệch phí do phí nguội'
+            # df_phi_nguoi = doi_soat_cp.kiem_tra_thu_phi_nguoi(df_tra_phi.copy())
+            # data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'NghiVan-PhiNguoi', df_phi_nguoi)
+
+            # '5. Nhóm xe có chênh lệch phí fe_co_be_khong'
+            # df_fe_co_be_khong = doi_soat_cp.kiem_tra_fe_co_be_khong(df_tra_phi.copy())
+            # data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'FE-co-BE_khong', df_fe_co_be_khong)
+
+            # '4. Nhóm xe có chênh lệch phí do phí nguội'
+            # df_phithu_be_khac_fe = doi_soat_cp.kiem_tra_chenh_lech_phi(df_tra_phi.copy())
+            # data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'PhiThu-KhacNhau', df_phithu_be_khac_fe)
             
-            "4. Báo cáo tổng hợp đối soát phí"
-            df_bao_cao_doi_soat = doi_soat_cp.doi_soat_phi(df_group_cars_time)
-            data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'BaoCaoDoiSoat', df_bao_cao_doi_soat)
+            # "4. Báo cáo tổng hợp đối soát phí"
+            # df_bao_cao_doi_soat = doi_soat_cp.doi_soat_phi(df_group_cars_time)
+            # data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'BaoCaoDoiSoat', df_bao_cao_doi_soat)
+
+            '2. Kết quả đối soát'
+            doi_soat_cp = DoiSoatPhi()
+            dic_kq_doi_soat = doi_soat_cp.doi_soat_phi_tach_df(df_group_cars_time.copy())
+            data_for_excel.update(dic_kq_doi_soat)
 
             " 1234. Ghi dữ liệu ra file Excel"
             self.to_excel(self.output_dir, data_for_excel)

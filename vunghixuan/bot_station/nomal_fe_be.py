@@ -13,7 +13,35 @@ class NoMalFEBE():
         else:
             return None
 
-    
+    def load_and_standardize_fe_be(self):
+        try:
+            if self.df_fe is None or self.df_be is None:
+                raise ValueError("Không có dữ liệu FE hoặc BE để so sánh.")            
+           
+
+            col_name = 'Mã giao dịch'
+            id_col_name_in_fe = self.get_id_column_name(col_name, self.df_fe.columns)
+            id_col_name_in_be = self.get_id_column_name(col_name, self.df_be.columns)
+            if id_col_name_in_fe is None or id_col_name_in_be is None:
+                raise ValueError("Cột 'mã giao dịch' không tồn tại trong một hoặc cả hai file.")
+
+            # Chuẩn hóa cột 'Mã giao dịch' cho FE và BE
+            col_names_FE = ['Số xe đăng ký'] # Không cần chuẩn hoá cột 'Mã giao dịch' và , 'Mã thẻ': có sẵn dấu ' rồi
+            fe_processed = self.df_fe.copy()
+            for name in col_names_FE:
+                fe_processed = self._load_and_standardize_fe(fe_processed, name)
+            
+            col_names_BE = ['Mã giao dịch', 'Biển số xe', 'Số etag']
+            be_processed = self.df_be.copy()
+            for name in col_names_BE:                
+                be_processed = self._load_and_standardize_be(be_processed, name)
+            
+            # # Chuẩn hoá lại file gốc
+            # self.df_fe = fe_processed
+            # self.df_be = be_processed
+            return fe_processed, be_processed
+        except Exception as e:
+            print ("Lỗi: ",e)
 
     def _load_and_standardize_fe(self, df, col_name):
         if df is not None and col_name in df.columns:
@@ -150,205 +178,7 @@ class NoMalFEBE():
             selected_df.rename(columns=rename_dict, inplace=True)
         return selected_df
 
-    # def summarize_data(self, df_list, colname_fe_lists, colname_be_lists, sum_colname_fe, sum_colname_be, ma_giao_dich_col='Mã giao dịch'):
-    #     """
-    #     Tổng hợp dữ liệu từ hai DataFrame dựa trên mã giao dịch.
-    #     """
-    #     if len(df_list) != 2:
-    #         print("Lỗi: df_list phải chứa đúng hai DataFrame.")
-    #         return pd.DataFrame()
-        
-        
-
-    #     df_fe = df_list[0].copy()
-    #     df_be = df_list[1].copy()
-
-       
-        
-    #     if ma_giao_dich_col not in df_fe.columns or ma_giao_dich_col not in df_be.columns:
-    #         print(f"Lỗi: Cột '{ma_giao_dich_col}' không tồn tại trong một hoặc cả hai DataFrame.")
-    #         return pd.DataFrame()
-
-    #     # Chọn các cột cần thiết từ FE
-    #     fe_selected = df_fe[[ma_giao_dich_col] + colname_fe_lists].copy()
-
-    #     # Chọn các cột cần thiết từ BE và đổi tên
-    #     be_selected = df_be[[ma_giao_dich_col] + colname_be_lists].copy()
-    #     be_renamed_cols = {col: f'BE_{col}' if col != ma_giao_dich_col else col for col in be_selected.columns}
-    #     be_selected.rename(columns=be_renamed_cols, inplace=True)
-
-    #     # Merge hai DataFrame dựa trên mã giao dịch
-    #     merged_df = pd.merge(fe_selected, be_selected, on=ma_giao_dich_col, how='outer')       
-        
-
-    #     # Tạo dòng tổng
-    #     summary_data = {}
-    #     all_cols = merged_df.columns.tolist()
-    #     all_cols.append('Chênh lệch (Phí thu)')        
-        
-    #     # Cột đầu tiên là 'TỔNG'
-    #     if all_cols:
-    #         summary_data[all_cols[0]] = ['TỔNG']
-
     
-    #     # Tổng số giao dịch ở cột mã giao dịch
-    #     if ma_giao_dich_col in all_cols:
-    #         total_fe = len(df_fe)-1
-    #         total_be = len(df_be)-1
-    #         summary_data[ma_giao_dich_col] = [f'Tổng cộng: FE có {total_fe} giao dịch, BE có {total_be} giao dịch']
-        
-        
-
-    #     # Tính tổng cho các cột của FE
-    #     for col in sum_colname_fe:
-    #         if col in all_cols : #and pd.api.types.is_numeric_dtype(merged_df[col])
-    #             summary_data[col] = [merged_df[col].sum()]
-    #         else:
-    #             summary_data.setdefault(col, [None])
-
-    #     # Tính tổng cho các cột của BE
-    #     for col in sum_colname_be:
-    #         be_col = f'BE_{col}'
-    #         if be_col in all_cols : #and pd.api.types.is_numeric_dtype(merged_df[be_col])
-    #             summary_data[be_col] = [merged_df[be_col].sum()]
-    #         else:
-    #             summary_data.setdefault(be_col, [None])
-        
-        
-    #     # Tính chênh lệch phí
-    #     if 'Phí thu' in merged_df.columns and f'BE_{col}' in merged_df.columns:
-    #         merged_df['Chênh lệch (Phí thu)'] = merged_df['Phí thu'].fillna(0) - merged_df[f'BE_{col}'].fillna(0)
-    #         # Giải quyết cảnh báo  merged_df['Chênh lệch (Phí thu)'] = merged_df['Phí thu'].fillna(0) - merged_df[f'BE_{col}'].fillna(0) trong phương thức .fillna(), .ffill(), và .bfill() với kiểu dữ liệu object
-    #         merged_df = merged_df.infer_objects()
-    #         summary_data['Chênh lệch (Phí thu)'] = [merged_df['Chênh lệch (Phí thu)'].sum()]
-    #     else:
-    #         summary_data.setdefault('Chênh lệch (Phí thu)', [None])
-
-    #     # for col in summary_data['Chênh lệch (Phí thu)']:
-    #     #     summary_data['Chênh lệch (Phí thu)'] = [summary_data['Chênh lệch (Phí thu)'].sum()]
-
-
-    #     summary_df = pd.DataFrame(summary_data)
-
-    #     # Nối dòng tổng vào DataFrame kết quả
-    #     final_df = pd.concat([merged_df, summary_df], ignore_index=True, sort=False)
-    #     return final_df
-    
-
-    # def summarize_data(self, df_list, colname_fe_lists, colname_be_lists, sum_colname_fe, sum_colname_be, ma_giao_dich_col='Mã giao dịch'):
-    #     """
-    #     Tổng hợp dữ liệu từ hai DataFrame dựa trên mã giao dịch và tạo cột 'Mã giao dịch chuẩn'.
-    #     """
-    #     if len(df_list) != 2:
-    #         print("Lỗi: df_list phải chứa đúng hai DataFrame.")
-    #         return pd.DataFrame()
-
-    #     df_fe = df_list[0].copy()
-    #     df_be = df_list[1].copy()
-
-    #     if ma_giao_dich_col not in df_fe.columns or ma_giao_dich_col not in df_be.columns:
-    #         print(f"Lỗi: Cột '{ma_giao_dich_col}' không tồn tại trong một hoặc cả hai DataFrame.")
-    #         return pd.DataFrame()
-
-    #     # Chọn các cột cần thiết từ FE
-    #     fe_selected = df_fe[[ma_giao_dich_col] + colname_fe_lists].copy()
-
-    #     # Chọn các cột cần thiết từ BE và đổi tên
-    #     be_selected = df_be[[ma_giao_dich_col] + colname_be_lists].copy()
-    #     be_renamed_cols = {col: f'BE_{col}' if col != ma_giao_dich_col else col for col in be_selected.columns}
-    #     be_selected.rename(columns=be_renamed_cols, inplace=True)
-
-    #     # Merge hai DataFrame dựa trên mã giao dịch
-    #     merged_df = pd.merge(fe_selected, be_selected, on=ma_giao_dich_col, how='outer')
-
-    #     # Tạo cột 'Mã giao dịch chuẩn'
-    #     merged_df['Mã giao dịch chuẩn'] = merged_df[ma_giao_dich_col]
-
-    #     # Tạo dòng tổng
-    #     summary_data = {}
-    #     all_cols = merged_df.columns.tolist()
-    #     all_cols.append('Chênh lệch (Phí thu)')
-
-    #     # Cột đầu tiên là 'TỔNG'
-    #     if all_cols:
-    #         summary_data[all_cols[0]] = ['TỔNG']
-
-    #     # Tổng số giao dịch ở cột mã giao dịch
-    #     if ma_giao_dich_col in all_cols:
-    #         total_fe = len(df_fe)
-    #         total_be = len(df_be)
-    #         summary_data[ma_giao_dich_col] = [f'Tổng cộng: FE có {total_fe} giao dịch, BE có {total_be} giao dịch']
-
-    #     # Tính tổng cho các cột của FE
-    #     for col in sum_colname_fe:
-    #         if col in all_cols and pd.api.types.is_numeric_dtype(merged_df[col]):
-    #             summary_data[col] = [merged_df[col].sum()]
-    #         else:
-    #             summary_data.setdefault(col, [None])
-
-    #     # Tính tổng cho các cột của BE
-    #     for col in sum_colname_be:
-    #         be_col = f'BE_{col}'
-    #         if be_col in all_cols and pd.api.types.is_numeric_dtype(merged_df[be_col]):
-    #             summary_data[be_col] = [merged_df[be_col].sum()]
-    #         else:
-    #             summary_data.setdefault(be_col, [None])
-
-    #     # Tính chênh lệch phí
-    #     if 'Phí thu' in merged_df.columns and f'BE_{sum_colname_be[0]}' in merged_df.columns and sum_colname_be:
-    #         be_phi_col = f'BE_{sum_colname_be[0]}'
-    #         merged_df['Chênh lệch (Phí thu)'] = merged_df['Phí thu'].fillna(0) - merged_df[be_phi_col].fillna(0)
-    #         merged_df = merged_df.infer_objects()
-    #         summary_data['Chênh lệch (Phí thu)'] = [merged_df['Chênh lệch (Phí thu)'].sum()]
-    #     else:
-    #         summary_data.setdefault('Chênh lệch (Phí thu)', [None])
-
-    #     summary_df = pd.DataFrame(summary_data)
-
-    #     # Nối dòng tổng vào DataFrame kết quả
-    #     final_df = pd.concat([merged_df, summary_df], ignore_index=True, sort=False)
-    #     return final_df
-
-    
-    
-    # # Chuân hoá Sheet tổng hợp dữ liệu
-    # def merge_FE_BE_with_standard_mgd(self, df_list):
-    #     col_name = 'Mã giao dịch'
-    #     colname_fe = ['Số xe đăng ký', 'Mã thẻ','Phí thu', 'Làn','Ngày giờ', 'Loại vé']
-    #     colname_be = ['Biển số xe', 'Số etag', 'Loại giá vé', 'Tiền bao gồm thuế', 'Thời gian qua trạm', 'Làn']
-    #     sum_col_fe = ['Phí thu']
-    #     sum_col_be = ['Tiền bao gồm thuế']
-        
-        
-    #     # Sheet Tổng hợp dữ liệu
-    #     df_FE_BE = self.summarize_data(
-    #         df_list,
-    #         colname_fe,
-    #         colname_be,
-    #         sum_col_fe,
-    #         sum_col_be,
-    #         col_name
-    #     )
-    #     """
-    #     Nhiệm vụ ngày 250423: 
-    #         ***** Nhóm theo 'biển số' hay hơn nhóm Group 'mã thẻ' vì 1 xe gắn nhiều mã thẻ, có thể trừ tiền cả 2 thẻ nếu xe gắn vào 
-    #         - Tìm Cột 'Phí thu' mà FE tính tiền mà BE không tính tiền
-    #         - Sau đó tra lại cột 'Mã thẻ' nhóm thành Group theo cột 'Mã thẻ'
-    #             Lưu ý: Xét đến trường hợp cùng số xe nhưng có nhiều thẻ vẫn bị trừ tiền
-    #             Một "Mã thẻ' có thể gắn nhiều xe (Có thể loại)
-                
-    #         * Điều kiện: Nếu BE phí = 0 nghĩa là hoàn tiền, cũng chính là số chênh lệch giữa phí BE và FE
-    #         ? Có cần thêm cột 'Hoàn tiền' để làm sao cho BE và FE khớp số ==> Nghĩa là để cột 'chênh lệch phí thu' = 0 VNĐ
-    #     """
-     
-    #     return df_FE_BE
-
-    # def _select_and_rename_be_cols(self, df_be, ma_giao_dich_col, colname_be_lists):
-    #     """Chọn và đổi tên các cột của DataFrame BE."""
-    #     be_selected = df_be[[ma_giao_dich_col] + colname_be_lists].copy()
-    #     be_renamed_cols = {col: f'BE_{col}' if col != ma_giao_dich_col else col for col in be_selected.columns}
-    #     be_selected.rename(columns=be_renamed_cols, inplace=True)
-    #     return be_selected
 
     def _select_and_rename_be_cols(self, df_be, ma_giao_dich_col, colname_be_lists):
         """Chọn và đổi tên các cột của DataFrame BE."""
@@ -401,6 +231,12 @@ class NoMalFEBE():
 
         summary_df = pd.DataFrame(summary_data)
         final_df = pd.concat([merged_df, summary_df], ignore_index=True, sort=False)
+
+        # Chuẩn hoá cột phí thu
+        final_df['Phí thu'] = pd.to_numeric(final_df['Phí thu'], errors='coerce')
+        final_df['BE_Tiền bao gồm thuế'] = pd.to_numeric(final_df['BE_Tiền bao gồm thuế'], errors='coerce')        
+        
+
         return final_df
 
     def summarize_data(self, df_list, colname_fe_lists, colname_be_lists, sum_colname_fe, sum_colname_be, ma_giao_dich_col='Mã giao dịch'):
@@ -461,35 +297,7 @@ class NoMalFEBE():
 
         return df_FE_BE
     
-    def load_and_standardize_fe_be(self):
-        try:
-            if self.df_fe is None or self.df_be is None:
-                raise ValueError("Không có dữ liệu FE hoặc BE để so sánh.")            
-           
-
-            col_name = 'Mã giao dịch'
-            id_col_name_in_fe = self.get_id_column_name(col_name, self.df_fe.columns)
-            id_col_name_in_be = self.get_id_column_name(col_name, self.df_be.columns)
-            if id_col_name_in_fe is None or id_col_name_in_be is None:
-                raise ValueError("Cột 'mã giao dịch' không tồn tại trong một hoặc cả hai file.")
-
-            # Chuẩn hóa cột 'Mã giao dịch' cho FE và BE
-            col_names_FE = ['Số xe đăng ký'] # Không cần chuẩn hoá cột 'Mã giao dịch' và , 'Mã thẻ': có sẵn dấu ' rồi
-            fe_processed = self.df_fe.copy()
-            for name in col_names_FE:
-                fe_processed = self._load_and_standardize_fe(fe_processed, name)
-            
-            col_names_BE = ['Mã giao dịch', 'Biển số xe', 'Số etag']
-            be_processed = self.df_be.copy()
-            for name in col_names_BE:                
-                be_processed = self._load_and_standardize_be(be_processed, name)
-            
-            # # Chuẩn hoá lại file gốc
-            # self.df_fe = fe_processed
-            # self.df_be = be_processed
-            return fe_processed, be_processed
-        except Exception as e:
-            print ("Lỗi: ",e)
+    
     
     def create_col_standard_car_license(self, df):
         """

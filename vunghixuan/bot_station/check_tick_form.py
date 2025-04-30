@@ -78,7 +78,7 @@ class CheckTicketsForm(QWidget):
             # self.load_data_to_table(dic_excel['Tổng hợp FE_BE'])
             # self.load_data_to_table(dic_excel)
             # self.load_data_to_table(dic_excel['Đối soát phí thu']) 
-            self.load_data_to_table(dic_excel[list(dic_excel.keys())[-1]]) 
+            self.load_data_to_table(dic_excel[list(dic_excel.keys())[0]]) 
             
             try:
                 
