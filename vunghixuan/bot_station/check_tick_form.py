@@ -85,15 +85,14 @@ class CheckTicketsForm(QWidget):
                 # Mở file Excel ẩn để trang trí cho nhanh
                 wb = xw.Book(output_path, visble = True)
                 wb.sheets[0].activate()
-
+                QMessageBox.information(self, "Thông báo", f"Đã xuất file kết quả tại:\n{output_path}")
                
 
             except Exception as e:
+                QMessageBox.critical(self, "Lỗi", f"Lỗi khi xuất file Excel: {e}")
                 print(f"Lỗi khi xuất file Excel: {e}")
         else:
-            print("Không đủ dữ liệu FE và BE để thực hiện đối soát và xuất file.")
-
-        pass
+            QMessageBox.warning(self, "Cảnh báo", "Không đủ dữ liệu FE và BE để thực hiện đối soát và xuất file.")
 
     @Slot(pd.DataFrame)
     def load_data_to_table(self, df):

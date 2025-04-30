@@ -90,7 +90,7 @@ class Footer(QWidget):
     def initUI(self):
         layout = QHBoxLayout()
         layout.setContentsMargins(10, 10, 10, 10)
-        logo = QLabel("@Copyright 2025 by VuNghiXuan")
+        logo = QLabel("@Copyright 2025 by VuNghiXuan\n Chi tiết liên hệ: vunghixuan.info@gmail.com hoặc https://www.facebook.com/vunghixuan")
         layout.addWidget(logo)
         main_layout = QVBoxLayout()
         main_layout.addLayout(layout)
@@ -187,7 +187,7 @@ class MyWindow(QMainWindow):
 
     def initUI(self):
         # self.setGeometry(100, 100, 800, 600)
-        self.showMaximized()
+        # self.showMaximized()
         self.setWindowTitle('Phần mềm VuNghiXuan')
 
         center_layout = QWidget()
@@ -238,7 +238,7 @@ class MyWindow(QMainWindow):
 def show():
     app = QApplication(sys.argv)
     window = MyWindow()
-    window.show()
+    window.show()   
     sys.exit(app.exec())
 
 

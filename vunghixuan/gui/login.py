@@ -88,13 +88,18 @@ class LoginGroupBox(QWidget):
     def handle_login(self):
         username = self.username_input.text().strip()
         password = self.password_input.text().strip()
-        # db_manager = DatabaseManager(DATABASE_URL)
-        # user_manager = UserManager(db_manager.get_session())
         isUser = self.user_manager.verify_user(username, password)
         if isUser:
             self.hide()
             self.parent().tab_widget.setVisible(True)
+
+            # Đảm bảo không có cờ toàn màn hình
+            if self.main_window.windowState() & Qt.WindowFullScreen:
+                self.main_window.setWindowState(self.main_window.windowState() & ~Qt.WindowFullScreen)
+
+            # Hiển thị ở trạng thái phóng to
             self.main_window.showMaximized()
+
             self.main_window.handle_login_success(username)
         else:
             QMessageBox.warning(self, "Lỗi", "Tên người dùng hoặc mật khẩu không đúng.")

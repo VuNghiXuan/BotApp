@@ -105,9 +105,12 @@ class DataComparisonWorker(QObject):
 
             '2. Kết quả đối soát'
             doi_soat_cp = DoiSoatPhi()
-            ddf_kq_doi_soat = doi_soat_cp.doi_soat(df_group_cars_time.copy())
-            data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'BaoCaoDoiSoat', ddf_kq_doi_soat)
-            # data_for_excel.update(dic_kq_doi_soat)
+            # df_kq_VuNghiXuan = doi_soat_cp.doi_soat(df_group_cars_time.copy())
+            # data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'DoiSoat-VuNghiXuan', df_kq_VuNghiXuan)
+            
+            '3. Xuất các sheets thống kê báo cáo'
+            dic_report  = doi_soat_cp.doi_soat_va_phan_loai(df_group_cars_time.copy())
+            data_for_excel.update(dic_report)
 
             " 1234. Ghi dữ liệu ra file Excel"
             self.to_excel(self.output_dir, data_for_excel)

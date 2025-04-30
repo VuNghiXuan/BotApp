@@ -11,13 +11,13 @@ class DoiSoatPhi:
             '3A': ['5', '6']
         }
         self.cot_so_lan_qua_tram = 'Số lần qua trạm'
-        self.cot_thoi_gian_cach_lan_truoc = 'Thời gian cách lần trước (phút)'
+        self.cot_thoi_gian_cach_lan_truoc = 'K/C 2 lần đọc (phút)'
         self.cot_phi_dieu_chinh_fe = 'Phí điều chỉnh FE'
         self.cot_phi_dieu_chinh_be = 'Phí điều chỉnh BE'
         self.cot_ghi_chu_xu_ly = 'Ghi chú xử lý'
-        self.cot_xe_khong_thu_phi = 'xe không thu phí'
-        self.cot_loi_doc_nhieu_lan = 'lỗi đọc nhiều lần'
-        self.cot_thu_phi_nguoi = 'thu phí nguội'
+        self.cot_xe_khong_thu_phi = 'Xe không thu phí'
+        self.cot_loi_doc_nhieu_lan = 'Lỗi Anten'
+        self.cot_thu_phi_nguoi = 'Thu nguội'
         self.cot_chi_co_be = 'Giao dịch chỉ có BE'
         self.cot_ket_qua_doi_soat = 'Kết quả đối soát'
         self.cot_nguyen_nhan_doi_soat = 'Nguyên nhân đối soát'
@@ -31,7 +31,7 @@ class DoiSoatPhi:
             df (pd.DataFrame): DataFrame đã gộp và chuẩn hóa.
 
         Returns:
-            pd.DataFrame: DataFrame đã được đánh dấu cột 'xe không thu phí'.
+            pd.DataFrame: DataFrame đã được đánh dấu cột 'Xe không thu phí'.
         """
         dieu_kien_mien_phi_uu_tien = df['Loại vé chuẩn'].isin(['Miễn giảm 100%', 'UT toàn quốc', 'Miễn giảm ĐP', 'Vé quý thường', 'Vé tháng thường'])
         dieu_kien_phi_nan_hoac_khong = (df['Phí thu'].isna() | (df['Phí thu'] == 0)) & (df['BE_Tiền bao gồm thuế'].isna() | (df['BE_Tiền bao gồm thuế'] == 0))
@@ -99,13 +99,13 @@ class DoiSoatPhi:
     def kiem_tra_thu_phi_nguoi(self, df):
         """
         Kiểm tra và đánh dấu các trường hợp nghi vấn thu phí nguội,
-        đồng thời tạo cột 'thu phí nguội' và các cột liên quan.
+        đồng thời tạo cột 'Thu nguội' và các cột liên quan.
 
         Args:
             df (pd.DataFrame): DataFrame.
 
         Returns:
-            pd.DataFrame: DataFrame đã được đánh dấu cột 'thu phí nguội' và các cột liên quan.
+            pd.DataFrame: DataFrame đã được đánh dấu cột 'Thu nguội' và các cột liên quan.
         """
         dieu_kien_thu_phi_nguoi = (df['BE_Tiền bao gồm thuế'] > 0) & (df['Phí thu'].isna() | (df['Phí thu'] == 0))
         df[self.cot_thu_phi_nguoi] = dieu_kien_thu_phi_nguoi
@@ -145,7 +145,7 @@ class DoiSoatPhi:
             pd.DataFrame: DataFrame đã được điều chỉnh cột phí và ghi chú.
         """
         dieu_kien_chenh_lech = df['Phí thu'].fillna(0) != df['BE_Tiền bao gồm thuế'].fillna(0)
-        df['chenh_lech_phi'] = df['BE_Tiền bao gồm thuế'].fillna(0) - df['Phí thu'].fillna(0)
+        df['CL Phí-Đối Soát'] = df['BE_Tiền bao gồm thuế'].fillna(0) - df['Phí thu'].fillna(0)
         df.loc[dieu_kien_chenh_lech, self.cot_phi_dieu_chinh_fe] = df.loc[dieu_kien_chenh_lech, self.cot_phi_dieu_chinh_fe] + np.where(df.loc[dieu_kien_chenh_lech, 'Phí thu'].fillna(0) > df.loc[dieu_kien_chenh_lech, 'BE_Tiền bao gồm thuế'].fillna(0), -(df.loc[dieu_kien_chenh_lech, 'Phí thu'].fillna(0) - df.loc[dieu_kien_chenh_lech, 'BE_Tiền bao gồm thuế'].fillna(0)), 0)
         df.loc[dieu_kien_chenh_lech, self.cot_phi_dieu_chinh_be] = df.loc[dieu_kien_chenh_lech, self.cot_phi_dieu_chinh_be] + np.where(df.loc[dieu_kien_chenh_lech, 'Phí thu'].fillna(0) < df.loc[dieu_kien_chenh_lech, 'BE_Tiền bao gồm thuế'].fillna(0), -(df.loc[dieu_kien_chenh_lech, 'BE_Tiền bao gồm thuế'].fillna(0) - df.loc[dieu_kien_chenh_lech, 'Phí thu'].fillna(0)), 0)
 
@@ -188,7 +188,7 @@ class DoiSoatPhi:
             df = self.tach_nhom_xe_ko_thu_phi(df)
             df.loc[df[self.cot_xe_khong_thu_phi], self.cot_buoc_doi_soat] = 'Xác định xe không thu phí'
             df.loc[df[self.cot_xe_khong_thu_phi], self.cot_ket_qua_doi_soat] = 'Không thu phí'
-            df.loc[df[self.cot_xe_khong_thu_phi], self.cot_nguyen_nhan_doi_soat] = 'Xe thuộc diện miễn phí/ưu tiên'
+            df.loc[df[self.cot_xe_khong_thu_phi], self.cot_nguyen_nhan_doi_soat] = 'Không thu phí phí/ưu tiên'
 
             # Bước 2: Thêm cột trạm dựa trên làn
             df['Trạm'] = df['Làn chuẩn'].apply(self._get_tram_from_lane)
@@ -228,6 +228,91 @@ class DoiSoatPhi:
             print('Lỗi file doi_soat, class DoiSoatPhi', e)
 
         return df
+    
+    # Đưa vào dic_ecxcel
+    def _select_columns(self, df, columns):
+        """
+        Chọn các cột cụ thể từ DataFrame nếu chúng tồn tại.
+
+        Args:
+            df (pd.DataFrame): DataFrame đầu vào.
+            columns (list): Danh sách tên các cột cần chọn.
+
+        Returns:
+            pd.DataFrame: DataFrame chỉ chứa các cột đã chọn (nếu có).
+        """
+        existing_columns = [col for col in columns if col in df.columns]
+        return df[existing_columns].copy()
+
+    def doi_soat_va_phan_loai(self, df):
+        """
+        Phân loại DataFrame đã đối soát thành các DataFrame con
+        dựa trên kết quả và các bước đối soát, chỉ giữ lại các cột liên quan.
+
+        Args:
+            df_da_doi_soat (pd.DataFrame): DataFrame đã trải qua quy trình đối soát.
+
+        Returns:
+            dict: Dictionary chứa các DataFrame con đã được phân loại,
+                  mỗi DataFrame con chỉ chứa các cột liên quan.
+        """
+       
+        df_da_doi_soat = self.doi_soat(df.copy())
+        
+        results = {}
+
+        # Định nghĩa các cột cần thiết cho từng bảng
+        cols_khong_thu_phi = ['Thời gian chuẩn', 'Biển số chuẩn', 'Làn chuẩn', 'Loại vé chuẩn', self.cot_ket_qua_doi_soat, self.cot_nguyen_nhan_doi_soat]
+        cols_doc_nhieu_lan = ['Thời gian chuẩn', 'Biển số chuẩn', 'Làn chuẩn', self.cot_so_lan_qua_tram, self.cot_thoi_gian_cach_lan_truoc, 'Phí thu', 'BE_Tiền bao gồm thuế', self.cot_phi_dieu_chinh_fe, self.cot_phi_dieu_chinh_be, self.cot_ghi_chu_xu_ly, self.cot_ket_qua_doi_soat, self.cot_nguyen_nhan_doi_soat]
+        cols_phi_nguoi = ['Thời gian chuẩn', 'Biển số chuẩn', 'Làn chuẩn', 'Phí thu', 'BE_Tiền bao gồm thuế', self.cot_phi_dieu_chinh_fe, self.cot_phi_dieu_chinh_be, self.cot_ghi_chu_xu_ly, self.cot_ket_qua_doi_soat, self.cot_nguyen_nhan_doi_soat]
+        cols_chi_co_be = ['Thời gian chuẩn', 'Biển số chuẩn', 'Làn chuẩn', 'Phí thu', 'BE_Tiền bao gồm thuế', self.cot_phi_dieu_chinh_fe, self.cot_phi_dieu_chinh_be, self.cot_ghi_chu_xu_ly, self.cot_ket_qua_doi_soat, self.cot_nguyen_nhan_doi_soat]
+        cols_chenh_lech_phi = ['Thời gian chuẩn', 'Biển số chuẩn', 'Làn chuẩn', 'Phí thu', 'BE_Tiền bao gồm thuế', 'CL Phí-Đối Soát', self.cot_phi_dieu_chinh_fe, self.cot_phi_dieu_chinh_be, self.cot_ghi_chu_xu_ly, self.cot_ket_qua_doi_soat, self.cot_nguyen_nhan_doi_soat]
+        cols_khop = ['Thời gian chuẩn', 'Biển số chuẩn', 'Làn chuẩn', 'Phí thu', 'BE_Tiền bao gồm thuế', self.cot_ket_qua_doi_soat]
+        
+        # cols_bao_cao = df_da_doi_soat.columns.tolist() # Lấy tất cả các cột cho báo cáo tổng hợp
+        # cols_bao_cao = ['Mã giao dịch chuẩn', 'Biển số chuẩn', 'Mã thẻ', 'Phí thu', 'Ngày giờ', 'BE_Biển số xe', 'BE_Số etag', 'BE_Tiền bao gồm thuế', 'BE_Thời gian qua trạm',  'Chênh lệch (Phí thu)', 'Loại vé chuẩn', 'Bước đối soát', 'Kết quả đối soát', 'Nguyên nhân đối soát', 'Thu nguội', 'Giao dịch chỉ có BE', 'Xe không thu phí', 'Trạm', 'Làn chuẩn','Số lần qua trạm', 'Thời gian chuẩn', 'K/C 2 lần đọc (phút)', 'Lỗi Anten', 'Phí điều chỉnh FE', 'Phí điều chỉnh BE', 'Ghi chú xử lý']
+        cols_bao_cao = ['Mã giao dịch chuẩn', 'Biển số chuẩn', 'Mã thẻ', 'BE_Số etag','Phí thu', 'BE_Tiền bao gồm thuế',  'Loại vé chuẩn', 'Thu nguội', 'Giao dịch chỉ có BE', 'Xe không thu phí','Lỗi Anten', 'Trạm', 'Làn chuẩn','Số lần qua trạm', 'Thời gian chuẩn', 'K/C 2 lần đọc (phút)',  'Phí điều chỉnh FE', 'Phí điều chỉnh BE', 'Ghi chú xử lý']
+
+        # 1. Sheets dành riênng cho VunghiXuan ------------------ ***
+        results['VuNghiXuan'] = df_da_doi_soat
+
+        # 1. Xe không thu phí
+        df_khong_thu_phi = df_da_doi_soat[df_da_doi_soat[self.cot_xe_khong_thu_phi]].copy()
+        results['DoiSoat-KhongThuPhi'] = self._select_columns(df_khong_thu_phi, cols_khong_thu_phi)
+
+        # 1. Xe trả phí
+        dieu_kien_mien_phi_uu_tien = df['Loại vé chuẩn'].isin(['Miễn giảm 100%', 'UT toàn quốc', 'Miễn giảm ĐP', 'Vé quý thường', 'Vé tháng thường'])
+        dieu_kien_phi_nan_hoac_khong = (df['Phí thu'].isna() | (df['Phí thu'] == 0)) & (df['BE_Tiền bao gồm thuế'].isna() | (df['BE_Tiền bao gồm thuế'] == 0))
+        df_tra_phi = df[~(dieu_kien_mien_phi_uu_tien & dieu_kien_phi_nan_hoac_khong)].copy()
+        results['XeTraPhi'] = self._select_columns(df_tra_phi, cols_khong_thu_phi) 
+
+        # 2. Nghi vấn đọc nhiều lần
+        df_doc_nhieu_luot = df_da_doi_soat[df_da_doi_soat[self.cot_loi_doc_nhieu_lan]].copy()
+        results['DoiSoat-DocNhieuLan'] = self._select_columns(df_doc_nhieu_luot, cols_doc_nhieu_lan)
+
+        # 3. Nghi vấn thu phí nguội
+        df_thu_phi_nguoi = df_da_doi_soat[df_da_doi_soat[self.cot_thu_phi_nguoi]].copy()
+        results['DoiSoat-PhiNguoi'] = self._select_columns(df_thu_phi_nguoi, cols_phi_nguoi)
+
+        # 4. Giao dịch chỉ có BE
+        df_chi_co_be = df_da_doi_soat[df_da_doi_soat[self.cot_chi_co_be]].copy()
+        results['DoiSoat-ChiCo-FE'] = self._select_columns(df_chi_co_be, cols_chi_co_be)
+
+        # 5. Chênh lệch phí
+        dieu_kien_chenh_lech = (df_da_doi_soat['Phí điều chỉnh FE'] != 0) | (df_da_doi_soat['Phí điều chỉnh BE'] != 0)
+        df_chenh_lech_phi = df_da_doi_soat[dieu_kien_chenh_lech].copy()
+        results['DoiSoat-GiaThuPhi'] = self._select_columns(df_chenh_lech_phi, cols_chenh_lech_phi)
+
+        # 6. Giao dịch khớp (những giao dịch không rơi vào các trường hợp lỗi trên)
+        dieu_kien_khop = ~(df_da_doi_soat[self.cot_xe_khong_thu_phi] | df_da_doi_soat[self.cot_loi_doc_nhieu_lan] | df_da_doi_soat[self.cot_thu_phi_nguoi] | df_da_doi_soat[self.cot_chi_co_be] | dieu_kien_chenh_lech)
+        df_khop = df_da_doi_soat[dieu_kien_khop].copy()
+        results['DoiSoat-Khop'] = self._select_columns(df_khop, cols_khop)
+
+        # 7. Báo cáo tổng hợp (tất cả dữ liệu đã đối soát)
+        results['BaoCaoTong_DoiSoat'] = self._select_columns(df_da_doi_soat, cols_bao_cao)
+
+
+        return results
 
 # class DoiSoatPhi:
 #     def __init__(self):
@@ -240,7 +325,7 @@ class DoiSoatPhi:
 #         self.cot_ket_qua = 'Kết quả đối soát'
 #         self.cot_nguyen_nhan = 'Nguyên nhân chênh lệch'
 #         self.cot_so_lan_qua_tram = 'Số lần qua trạm'
-#         self.cot_thoi_gian_cach_lan_truoc = 'Thời gian cách lần trước (phút)'
+#         self.cot_thoi_gian_cach_lan_truoc = 'K/C 2 lần đọc (phút)'
 #         self.cot_phi_dieu_chinh_fe = 'Phí điều chỉnh FE'
 #         self.cot_phi_dieu_chinh_be = 'Phí điều chỉnh BE'
 #         self.cot_ghi_chu_xu_ly = 'Ghi chú xử lý'
