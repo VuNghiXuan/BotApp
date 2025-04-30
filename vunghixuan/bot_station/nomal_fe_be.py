@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import re
 
 class NoMalFEBE():
     def __init__(self, df_fe, df_be):
@@ -356,63 +357,132 @@ class NoMalFEBE():
 
         return df_copy
 
-    def _nomal_time(self, df, col_name):
-        """Chuẩn hóa cột thời gian về kiểu datetime."""
-        if col_name in df.columns:
-            df[col_name] = df[col_name].str.strip("'").str.strip()
-            time_formats = ['%d/%m/%Y %H:%M:%S', '%Y-%m-%d %H:%M:%S', '%m/%d/%Y %H:%M:%S',
-                            '%d-%m-%Y %H:%M:%S', '%Y/%m/%d %H:%M:%S']
-            for fmt in time_formats:
-                df[col_name] = df[col_name].fillna(pd.to_datetime(df[col_name], format=fmt, errors='coerce'))
-        return df
+    # def _parse_special_time(self, time_str):
+    #     """Phân tích một định dạng thời gian đặc biệt (ví dụ: DDMMYY HHMMSS)."""
+    #     if isinstance(time_str, str): # Kiểm tra kiểu dữ liệu trước khi xử lý
+    #         match = re.match(r'(\d{2})(\d{2})(\d{2}) (\d{2})(\d{2})(\d{2})', time_str)
+    #         if match:
+    #             day, month, year_short, hour, minute, second = match.groups()
+    #             year = f'20{year_short}' if int(year_short) < 100 else year_short
+    #             try:
+    #                 return pd.to_datetime(f'{year}-{month}-{day} {hour}:{minute}:{second}', errors='raise')
+    #             except ValueError:
+    #                 return pd.NaT
+    #     return pd.NaT
+
+    # def _nomal_time(self, df, col_name):
+    #     """Chuẩn hóa cột thời gian về kiểu datetime."""
+    #     if col_name in df.columns:
+    #         df[col_name] = df[col_name].str.strip("'").str.strip()
+    #         # Loại bỏ dấu ':' ở đầu nếu có
+    #         df[col_name] = df[col_name].str.lstrip(':')
+    #         time_formats = ['%d/%m/%Y %H:%M:%S', '%Y-%m-%d %H:%M:%S', '%m/%d/%Y %H:%M:%S',
+    #                         '%d-%m-%Y %H:%M:%S', '%Y/%m/%d %H:%M:%S']
+    #         for fmt in time_formats:
+    #             df[col_name] = df[col_name].fillna(pd.to_datetime(df[col_name], format=fmt, errors='coerce'))
+    #     return df
+
+    # def create_standardized_time_str(self, df):
+    #     """
+    #     Tạo cột 'Thời gian chuẩn' bằng cách kết hợp _nomal_time và _parse_special_time.
+    #     Ưu tiên giá trị từ 'BE_Thời gian qua trạm', sau đó thử 'Ngày giờ'.
+    #     """
+    #     df_copy = df.copy()
+    #     try:
+    #         # Chuẩn hóa cả hai cột về kiểu datetime
+    #         df_copy = self._nomal_time(df_copy, 'BE_Thời gian qua trạm')
+    #         df_copy = self._nomal_time(df_copy, 'Ngày giờ')
+
+    #         # Tạo cột 'Thời gian chuẩn' ưu tiên 'BE_Thời gian qua trạm'
+    #         df_copy['Thời gian chuẩn'] = df_copy['BE_Thời gian qua trạm'].where(
+    #             pd.notna(df_copy['BE_Thời gian qua trạm']),
+    #             df_copy['Ngày giờ']
+    #         )
+
+    #         # Xử lý các giá trị NaT còn lại bằng _parse_special_time (nếu cần)
+    #         mask_nat = df_copy['Thời gian chuẩn'].isna()
+    #         # Chỉ áp dụng _parse_special_time cho các giá trị không phải NaT
+    #         df_copy.loc[mask_nat, 'Thời gian chuẩn'] = df_copy.loc[mask_nat, 'Thời gian chuẩn'].apply(
+    #             lambda x: self._parse_special_time(x) if pd.notna(x) else x
+    #         )
+
+    #     except Exception as e:
+    #         print('Lỗi:', e)
+    #     return df_copy
     
+   
     def create_standardized_time_str(self, df):
         """
-        Tạo cột 'Thời gian chuẩn' dạng chuỗi từ cột 'BE_Thời gian qua trạm' và 'Ngày giờ'
-        bằng cách xử lý chúng như hai list. Ưu tiên giá trị từ list 'BE_Thời gian qua trạm'.
-        Bỏ qua kiểm tra ngày tháng và chỉ lấy phần giờ:phút:giây.
-
-        Args:
-            df (pd.DataFrame): DataFrame chứa cột 'Ngày giờ' và 'BE_Thời gian qua trạm'.
-
-        Returns:
-            pd.DataFrame: DataFrame với cột 'Thời gian chuẩn' chứa list các giá trị
-                        thời gian đã được chuẩn hóa dạng 'HH:MM:SS'.
+        Tạo cột 'Thời gian chuẩn' dạng chuỗi 'HH:MM:SS' ưu tiên BE, sau đó FE (chỉ lấy giờ).
         """
         df_copy = df.copy()
-
-        be_time_list = df_copy['BE_Thời gian qua trạm'].astype(str).tolist()
-        fe_time_list = df_copy['Ngày giờ'].astype(str).tolist()
         standardized_time_list = []
 
-        def extract_time_str(time_str):
-            if pd.isna(time_str) or time_str == 'NaT':
-                return None
-            try:
-                # Thử trích xuất giờ:phút:giây từ định dạng 'dd/mm/yyyy HH:MM:SS'
-                return time_str.split(' ')[1]
-            except IndexError:
+        be_times = df_copy['BE_Thời gian qua trạm'].astype(str).tolist()
+        fe_times = df_copy['Ngày giờ'].astype(str).tolist()
+
+        for idx, fe_time in enumerate(fe_times):
+            if pd.notna(pd.to_datetime(fe_time, errors='coerce')): # Kiểm tra xem BE có phải là datetime hợp lệ không
+                standardized_time_list.append(fe_time)
+            elif pd.notna(pd.to_datetime(be_times[idx], errors='coerce')): # Kiểm tra xem FE có phải là datetime hợp lệ không
                 try:
-                    # Thử trích xuất giờ:phút:giây từ định dạng 'dd-mm-yyyy HH:MM:SS' (sau khi bỏ dấu ')
-                    return time_str.replace("'", "").split(' ')[1]
+                    standardized_time_list.append(be_times[idx].replace("'", "").split(' ')[1])
                 except IndexError:
-                    return None
-
-        for be_time, fe_time in zip(be_time_list, fe_time_list):
-            extracted_be = extract_time_str(be_time)
-            extracted_fe = extract_time_str(fe_time)
-
-            if extracted_be:
-                standardized_time_list.append(extracted_be)
-            elif extracted_fe:
-                standardized_time_list.append(extracted_fe)
+                    standardized_time_list.append(None) # Xử lý trường hợp không tách được giờ
             else:
                 standardized_time_list.append(None)
 
         df_copy['Thời gian chuẩn'] = standardized_time_list
         return df_copy
+            
 
-    
+    "Phiên bản 1.0.8"
+    # def create_standardized_time_str(self, df):
+    #     """
+    #     Tạo cột 'Thời gian chuẩn' dạng chuỗi từ cột 'BE_Thời gian qua trạm' và 'Ngày giờ'
+    #     bằng cách xử lý chúng như hai list. Ưu tiên giá trị từ list 'BE_Thời gian qua trạm'.
+    #     Bỏ qua kiểm tra ngày tháng và chỉ lấy phần giờ:phút:giây.
+
+    #     Args:
+    #         df (pd.DataFrame): DataFrame chứa cột 'Ngày giờ' và 'BE_Thời gian qua trạm'.
+
+    #     Returns:
+    #         pd.DataFrame: DataFrame với cột 'Thời gian chuẩn' chứa list các giá trị
+    #                     thời gian đã được chuẩn hóa dạng 'HH:MM:SS'.
+    #     """
+    #     df_copy = df.copy()
+
+    #     be_time_list = df_copy['BE_Thời gian qua trạm'].astype(str).tolist()
+    #     fe_time_list = df_copy['Ngày giờ'].astype(str).tolist()
+    #     standardized_time_list = []
+        
+    #     def extract_time_str(time_str):
+    #         if pd.isna(time_str) or time_str == 'NaT':
+    #             return None
+    #         try:
+    #             # Thử trích xuất giờ:phút:giây từ định dạng 'dd/mm/yyyy HH:MM:SS'
+    #             return time_str.split(' ')[1]
+    #         except IndexError:
+    #             try:
+    #                 # Thử trích xuất giờ:phút:giây từ định dạng 'dd-mm-yyyy HH:MM:SS' (sau khi bỏ dấu ')
+    #                 return time_str.replace("'", "").split(' ')[1]
+    #             except IndexError:
+    #                 return None
+
+    #     for be_time, fe_time in zip(be_time_list, fe_time_list):
+    #         extracted_be = extract_time_str(be_time)
+    #         extracted_fe = extract_time_str(fe_time)
+
+    #         if extracted_be:
+    #             standardized_time_list.append(extracted_be)
+    #         elif extracted_fe:
+    #             standardized_time_list.append(extracted_fe)
+    #         else:
+    #             standardized_time_list.append(None)
+
+    #     df_copy['Thời gian chuẩn'] = standardized_time_list
+    #     return df_copy
+
     
 
     def group_cars_and_time_from_df_FE_BE(self, df):
