@@ -10,35 +10,33 @@ class DoiSoatPhi:
             '3B': ['7', '8', '9'],
             '3A': ['5', '6']
         }
-        self.cot_ket_qua = 'Kết quả đối soát'
-        self.cot_nguyen_nhan = 'Nguyên nhân chênh lệch'
         self.cot_so_lan_qua_tram = 'Số lần qua trạm'
         self.cot_thoi_gian_cach_lan_truoc = 'Thời gian cách lần trước (phút)'
         self.cot_phi_dieu_chinh_fe = 'Phí điều chỉnh FE'
         self.cot_phi_dieu_chinh_be = 'Phí điều chỉnh BE'
         self.cot_ghi_chu_xu_ly = 'Ghi chú xử lý'
+        self.cot_xe_khong_thu_phi = 'xe không thu phí'
+        self.cot_loi_doc_nhieu_lan = 'lỗi đọc nhiều lần'
+        self.cot_thu_phi_nguoi = 'thu phí nguội'
+        self.cot_chi_co_be = 'Giao dịch chỉ có BE'
+        self.cot_ket_qua_doi_soat = 'Kết quả đối soát'
+        self.cot_nguyen_nhan_doi_soat = 'Nguyên nhân đối soát'
+        self.cot_buoc_doi_soat = 'Bước đối soát'
 
     def tach_nhom_xe_ko_thu_phi(self, df):
         """
-        Tách DataFrame thành hai nhóm: xe có vé ưu tiên/miễn phí và xe không.
+        Đánh dấu các xe không thu phí trực tiếp vào DataFrame.
 
         Args:
-            df (pd.DataFrame): DataFrame đã gộp và chuẩn hóa, có cột 'Loại vé chuẩn',
-                               'Phí thu' (FE), và 'BE_Tiền bao gồm thuế' (BE).
+            df (pd.DataFrame): DataFrame đã gộp và chuẩn hóa.
 
         Returns:
-            tuple: Một tuple chứa hai DataFrame:
-                   - df_khong_thu_phi_uu_tien: DataFrame chứa các xe có vé miễn phí/ưu tiên
-                                         và phí thu BE/FE là NaN hoặc = 0.
-                   - df_tra_phi: DataFrame chứa các xe không thuộc nhóm trên.
+            pd.DataFrame: DataFrame đã được đánh dấu cột 'xe không thu phí'.
         """
         dieu_kien_mien_phi_uu_tien = df['Loại vé chuẩn'].isin(['Miễn giảm 100%', 'UT toàn quốc', 'Miễn giảm ĐP', 'Vé quý thường', 'Vé tháng thường'])
         dieu_kien_phi_nan_hoac_khong = (df['Phí thu'].isna() | (df['Phí thu'] == 0)) & (df['BE_Tiền bao gồm thuế'].isna() | (df['BE_Tiền bao gồm thuế'] == 0))
-
-        df_khong_thu_phi_uu_tien = df[dieu_kien_mien_phi_uu_tien & dieu_kien_phi_nan_hoac_khong].copy()
-        df_tra_phi = df[~(dieu_kien_mien_phi_uu_tien & dieu_kien_phi_nan_hoac_khong)].copy()
-
-        return df_khong_thu_phi_uu_tien, df_tra_phi
+        df[self.cot_xe_khong_thu_phi] = dieu_kien_mien_phi_uu_tien & dieu_kien_phi_nan_hoac_khong
+        return df
 
     def _get_tram_from_lane(self, lane):
         """Trích xuất tên trạm từ tên làn."""
@@ -55,144 +53,181 @@ class DoiSoatPhi:
         Kiểm tra và đánh dấu các trường hợp nghi vấn đọc nhiều lượt do anten.
 
         Args:
-            df (pd.DataFrame): DataFrame chứa các xe trả phí.
+            df (pd.DataFrame): DataFrame chứa dữ liệu đối soát.
 
         Returns:
-            pd.DataFrame: DataFrame chứa các trường hợp nghi vấn đọc nhiều lượt.
+            pd.DataFrame: DataFrame đã được cập nhật với thông tin về lỗi đọc nhiều lượt.
         """
-        df_nhieu_luot = df.copy()
-        df_nhieu_luot[self.cot_so_lan_qua_tram] = df_nhieu_luot.groupby('Biển số chuẩn')['Thời gian chuẩn'].transform('count')
-        df_nhieu_luot_filtered = df_nhieu_luot[df_nhieu_luot[self.cot_so_lan_qua_tram] >= 2].sort_values(['Biển số chuẩn', 'Thời gian chuẩn']).copy()
-        df_nhieu_luot_filtered['Trạm'] = df_nhieu_luot_filtered['Làn chuẩn'].apply(self._get_tram_from_lane)
-        df_nhieu_luot_filtered[self.cot_thoi_gian_cach_lan_truoc] = df_nhieu_luot_filtered.groupby('Biển số chuẩn')['Thời gian chuẩn'].diff().dt.total_seconds() / 60
-        df_nhieu_luot_filtered[self.cot_ket_qua] = None
-        df_nhieu_luot_filtered[self.cot_nguyen_nhan] = None
-        df_nhieu_luot_filtered[self.cot_phi_dieu_chinh_fe] = 0
-        df_nhieu_luot_filtered[self.cot_phi_dieu_chinh_be] = 0
-        df_nhieu_luot_filtered[self.cot_ghi_chu_xu_ly] = None
+        df[self.cot_so_lan_qua_tram] = df.groupby('Biển số chuẩn')['Thời gian chuẩn'].transform('count')
+        df['Trạm'] = df['Làn chuẩn'].apply(self._get_tram_from_lane)
+        df[self.cot_thoi_gian_cach_lan_truoc] = df.groupby('Biển số chuẩn')['Thời gian chuẩn'].diff().dt.total_seconds() / 60
+        df[self.cot_loi_doc_nhieu_lan] = False
+
+        # Ensure the adjustment columns exist, initializing with 0 if not
+        if self.cot_phi_dieu_chinh_fe not in df.columns:
+            df[self.cot_phi_dieu_chinh_fe] = 0
+        else:
+            df[self.cot_phi_dieu_chinh_fe] = df[self.cot_phi_dieu_chinh_fe].fillna(0)
+
+        if self.cot_phi_dieu_chinh_be not in df.columns:
+            df[self.cot_phi_dieu_chinh_be] = 0
+        else:
+            df[self.cot_phi_dieu_chinh_be] = df[self.cot_phi_dieu_chinh_be].fillna(0)
+
+        # Ensure the ghi_chu_xu_ly column exists, initializing with '' if not
+        if self.cot_ghi_chu_xu_ly not in df.columns:
+            df[self.cot_ghi_chu_xu_ly] = ''
+        else:
+            df[self.cot_ghi_chu_xu_ly] = df[self.cot_ghi_chu_xu_ly].fillna('')
+
+        df_nhieu_luot_filtered = df[df[self.cot_so_lan_qua_tram] >= 2].sort_values(['Biển số chuẩn', 'Thời gian chuẩn']).copy()
 
         dieu_kien_cung_lan = (df_nhieu_luot_filtered[self.cot_thoi_gian_cach_lan_truoc] <= 5) & (df_nhieu_luot_filtered.groupby('Biển số chuẩn')['Làn chuẩn'].shift() == df_nhieu_luot_filtered['Làn chuẩn']) & ((df_nhieu_luot_filtered['BE_Tiền bao gồm thuế'] > 0) | (df_nhieu_luot_filtered['Phí thu'] > 0))
-        df_nhieu_luot_filtered.loc[dieu_kien_cung_lan, self.cot_ket_qua] = 'Nghi vấn đọc nhiều lượt (cùng làn)'
-        df_nhieu_luot_filtered.loc[dieu_kien_cung_lan, self.cot_nguyen_nhan] = 'Thời gian gần, cùng làn và có phí'
-        df_nhieu_luot_filtered.loc[dieu_kien_cung_lan, self.cot_phi_dieu_chinh_fe] = -df_nhieu_luot_filtered['Phí thu']
-        df_nhieu_luot_filtered.loc[dieu_kien_cung_lan, self.cot_phi_dieu_chinh_be] = -df_nhieu_luot_filtered['BE_Tiền bao gồm thuế']
-        df_nhieu_luot_filtered.loc[dieu_kien_cung_lan, self.cot_ghi_chu_xu_ly] = 'Trả lại phí do đọc trùng'
+        df.loc[df_nhieu_luot_filtered[dieu_kien_cung_lan].index, self.cot_loi_doc_nhieu_lan] = True
+        df.loc[df_nhieu_luot_filtered[dieu_kien_cung_lan].index, self.cot_phi_dieu_chinh_fe] = df.loc[df_nhieu_luot_filtered[dieu_kien_cung_lan].index, self.cot_phi_dieu_chinh_fe] - df_nhieu_luot_filtered.loc[dieu_kien_cung_lan, 'Phí thu'].fillna(0)
+        df.loc[df_nhieu_luot_filtered[dieu_kien_cung_lan].index, self.cot_phi_dieu_chinh_be] = df.loc[df_nhieu_luot_filtered[dieu_kien_cung_lan].index, self.cot_phi_dieu_chinh_be] - df_nhieu_luot_filtered.loc[dieu_kien_cung_lan, 'BE_Tiền bao gồm thuế'].fillna(0)
+        df.loc[df_nhieu_luot_filtered[dieu_kien_cung_lan].index, self.cot_ghi_chu_xu_ly] = df.loc[df_nhieu_luot_filtered[dieu_kien_cung_lan].index, self.cot_ghi_chu_xu_ly] + '; Trả lại phí do đọc trùng'
 
-        dieu_kien_khac_lan_cung_tram = (df_nhieu_luot_filtered[self.cot_thoi_gian_cach_lan_truoc] <= 5) & (df_nhieu_luot_filtered.groupby('Biển số chuẩn')['Trạm'].shift() == df_nhieu_luot_filtered['Trạm']) & ((df_nhieu_luot_filtered['BE_Tiền bao gồm thuế'] > 0) | (df_nhieu_luot_filtered['Phí thu'] > 0)) & (df_nhieu_luot_filtered[self.cot_ket_qua].isna())
-        df_nhieu_luot_filtered.loc[dieu_kien_khac_lan_cung_tram, self.cot_ket_qua] = 'Nghi vấn đọc nhiều lượt (khác làn cùng trạm)'
-        df_nhieu_luot_filtered.loc[dieu_kien_khac_lan_cung_tram, self.cot_nguyen_nhan] = 'Thời gian gần, khác làn cùng trạm và có phí'
-        # Logic điều chỉnh phí cho trường hợp khác làn cùng trạm cần được xem xét cụ thể hơn
-        # Ví dụ: Lấy phí của giao dịch đầu tiên làm chuẩn, các giao dịch sau điều chỉnh về 0 hoặc theo mức phí đúng
-        df_nhieu_luot_filtered.loc[dieu_kien_khac_lan_cung_tram, self.cot_phi_dieu_chinh_fe] = -df_nhieu_luot_filtered['Phí thu'].where(df_nhieu_luot_filtered.groupby('Biển số chuẩn')['Thời gian chuẩn'].transform('rank') > 1, 0)
-        df_nhieu_luot_filtered.loc[dieu_kien_khac_lan_cung_tram, self.cot_phi_dieu_chinh_be] = -df_nhieu_luot_filtered['BE_Tiền bao gồm thuế'].where(df_nhieu_luot_filtered.groupby('Biển số chuẩn')['Thời gian chuẩn'].transform('rank') > 1, 0)
-        df_nhieu_luot_filtered.loc[dieu_kien_khac_lan_cung_tram, self.cot_ghi_chu_xu_ly] = 'Cần kiểm tra, điều chỉnh phí do đọc nhiều lượt'
+        dieu_kien_khac_lan_cung_tram = (df_nhieu_luot_filtered[self.cot_thoi_gian_cach_lan_truoc] <= 5) & (df_nhieu_luot_filtered.groupby('Biển số chuẩn')['Trạm'].shift() == df_nhieu_luot_filtered['Trạm']) & ((df_nhieu_luot_filtered['BE_Tiền bao gồm thuế'] > 0) | (df_nhieu_luot_filtered['Phí thu'] > 0)) & (~dieu_kien_cung_lan)
+        df.loc[df_nhieu_luot_filtered[dieu_kien_khac_lan_cung_tram].index, self.cot_loi_doc_nhieu_lan] = True
+        df.loc[df_nhieu_luot_filtered[dieu_kien_khac_lan_cung_tram].index, self.cot_phi_dieu_chinh_fe] = df.loc[df_nhieu_luot_filtered[dieu_kien_khac_lan_cung_tram].index, self.cot_phi_dieu_chinh_fe] - df_nhieu_luot_filtered.loc[dieu_kien_khac_lan_cung_tram, 'Phí thu'].where(df_nhieu_luot_filtered.groupby('Biển số chuẩn')['Thời gian chuẩn'].transform('rank') > 1, 0).fillna(0)
+        df.loc[df_nhieu_luot_filtered[dieu_kien_khac_lan_cung_tram].index, self.cot_phi_dieu_chinh_be] = df.loc[df_nhieu_luot_filtered[dieu_kien_khac_lan_cung_tram].index, self.cot_phi_dieu_chinh_be] - df_nhieu_luot_filtered.loc[dieu_kien_khac_lan_cung_tram, 'BE_Tiền bao gồm thuế'].where(df_nhieu_luot_filtered.groupby('Biển số chuẩn')['Thời gian chuẩn'].transform('rank') > 1, 0).fillna(0)
+        df.loc[df_nhieu_luot_filtered[dieu_kien_khac_lan_cung_tram].index, self.cot_ghi_chu_xu_ly] = df.loc[df_nhieu_luot_filtered[dieu_kien_khac_lan_cung_tram].index, self.cot_ghi_chu_xu_ly] + '; Cần kiểm tra, điều chỉnh phí do đọc nhiều lượt'
 
-        return df_nhieu_luot_filtered[~df_nhieu_luot_filtered[self.cot_ket_qua].isna()].copy()
+        return df
 
     def kiem_tra_thu_phi_nguoi(self, df):
         """
-        Kiểm tra và trả về các trường hợp nghi vấn thu phí nguội (BE có phí, FE không).
+        Kiểm tra và đánh dấu các trường hợp nghi vấn thu phí nguội,
+        đồng thời tạo cột 'thu phí nguội' và các cột liên quan.
 
         Args:
-            df (pd.DataFrame): DataFrame chứa các xe trả phí.
+            df (pd.DataFrame): DataFrame.
 
         Returns:
-            pd.DataFrame: DataFrame chứa các trường hợp nghi vấn thu phí nguội.
+            pd.DataFrame: DataFrame đã được đánh dấu cột 'thu phí nguội' và các cột liên quan.
         """
-        df_thu_phi_nguoi = df[(df['BE_Tiền bao gồm thuế'] > 0) & (df['Phí thu'].isna() | (df['Phí thu'] == 0))].copy()
-        df_thu_phi_nguoi[self.cot_ket_qua] = 'Nghi vấn thu phí nguội'
-        df_thu_phi_nguoi[self.cot_nguyen_nhan] = 'BE có phí, FE không có phí'
-        df_thu_phi_nguoi[self.cot_phi_dieu_chinh_fe] = df_thu_phi_nguoi['BE_Tiền bao gồm thuế']
-        df_thu_phi_nguoi[self.cot_phi_dieu_chinh_be] = 0
-        df_thu_phi_nguoi[self.cot_ghi_chu_xu_ly] = 'Bổ sung phí cho FE'
-        return df_thu_phi_nguoi
+        dieu_kien_thu_phi_nguoi = (df['BE_Tiền bao gồm thuế'] > 0) & (df['Phí thu'].isna() | (df['Phí thu'] == 0))
+        df[self.cot_thu_phi_nguoi] = dieu_kien_thu_phi_nguoi
+        df[self.cot_phi_dieu_chinh_fe] = np.where(dieu_kien_thu_phi_nguoi, df[self.cot_phi_dieu_chinh_fe] + df['BE_Tiền bao gồm thuế'].fillna(0), df[self.cot_phi_dieu_chinh_fe])
+        df[self.cot_phi_dieu_chinh_be] = np.where(dieu_kien_thu_phi_nguoi, df[self.cot_phi_dieu_chinh_be], df[self.cot_phi_dieu_chinh_be])
+        df[self.cot_ghi_chu_xu_ly] = np.where(dieu_kien_thu_phi_nguoi & (df[self.cot_ghi_chu_xu_ly] == ''), 'Bổ sung phí cho FE',
+                                            np.where(dieu_kien_thu_phi_nguoi & (df[self.cot_ghi_chu_xu_ly] != ''), df[self.cot_ghi_chu_xu_ly] + '; Bổ sung phí cho FE', df[self.cot_ghi_chu_xu_ly]))
+        return df
 
     def kiem_tra_fe_co_be_khong(self, df):
         """
-        Kiểm tra và trả về các trường hợp FE có phí, BE không có.
+        Kiểm tra và đánh dấu các trường hợp FE có phí, BE không có,
+        đồng thời tạo cột 'Giao dịch chỉ có BE' và các cột liên quan.
 
         Args:
-            df (pd.DataFrame): DataFrame chứa các xe trả phí.
+            df (pd.DataFrame): DataFrame.
 
         Returns:
-            pd.DataFrame: DataFrame chứa các trường hợp FE có phí, BE không có.
+            pd.DataFrame: DataFrame đã được đánh dấu cột 'Giao dịch chỉ có BE' và các cột liên quan.
         """
-        df_fe_co_be_khong = df[(df['Phí thu'] > 0) & (df['BE_Tiền bao gồm thuế'].isna() | (df['BE_Tiền bao gồm thuế'] == 0))].copy()
-        df_fe_co_be_khong[self.cot_ket_qua] = 'FE có phí, BE không có'
-        df_fe_co_be_khong[self.cot_nguyen_nhan] = 'FE có giao dịch tính tiền, BE không có'
-        df_fe_co_be_khong[self.cot_phi_dieu_chinh_fe] = 0
-        df_fe_co_be_khong[self.cot_phi_dieu_chinh_be] = df_fe_co_be_khong['Phí thu']
-        df_fe_co_be_khong[self.cot_ghi_chu_xu_ly] = 'Bổ sung phí cho BE'
-        return df_fe_co_be_khong
+        dieu_kien_fe_co_be_khong = (df['Phí thu'] > 0) & (df['BE_Tiền bao gồm thuế'].isna() | (df['BE_Tiền bao gồm thuế'] == 0))
+        df[self.cot_chi_co_be] = dieu_kien_fe_co_be_khong
+        df[self.cot_phi_dieu_chinh_fe] = np.where(dieu_kien_fe_co_be_khong, df[self.cot_phi_dieu_chinh_fe], df[self.cot_phi_dieu_chinh_fe])
+        df[self.cot_phi_dieu_chinh_be] = np.where(dieu_kien_fe_co_be_khong, df[self.cot_phi_dieu_chinh_be] + df['Phí thu'].fillna(0), df[self.cot_phi_dieu_chinh_be])
+        df[self.cot_ghi_chu_xu_ly] = np.where(dieu_kien_fe_co_be_khong & (df[self.cot_ghi_chu_xu_ly] == ''), 'Bổ sung phí cho BE',
+                                            np.where(dieu_kien_fe_co_be_khong & (df[self.cot_ghi_chu_xu_ly] != ''), df[self.cot_ghi_chu_xu_ly] + '; Bổ sung phí cho BE', df[self.cot_ghi_chu_xu_ly]))
+        return df
 
     def kiem_tra_chenh_lech_phi(self, df):
         """
-        Kiểm tra và trả về các trường hợp chênh lệch phí thu giữa FE và BE.
+        Kiểm tra và đánh dấu các trường hợp chênh lệch phí thu giữa FE và BE.
 
         Args:
-            df (pd.DataFrame): DataFrame chứa các xe trả phí.
+            df (pd.DataFrame): DataFrame.
 
         Returns:
-            pd.DataFrame: DataFrame chứa các trường hợp chênh lệch phí.
+            pd.DataFrame: DataFrame đã được điều chỉnh cột phí và ghi chú.
         """
-        df_chenh_lech = df.copy()
-        dieu_kien_chenh_lech = df_chenh_lech['Phí thu'].fillna(0) != df_chenh_lech['BE_Tiền bao gồm thuế'].fillna(0)
-        df_chenh_lech_phi = df_chenh_lech[dieu_kien_chenh_lech].copy()
-        df_chenh_lech_phi[self.cot_ket_qua] = 'Chênh lệch phí'
-        df_chenh_lech_phi[self.cot_nguyen_nhan] = 'Khác phí thu giữa FE và BE'
-        df_chenh_lech_phi[self.cot_phi_dieu_chinh_fe] = np.where(df_chenh_lech_phi['Phí thu'].fillna(0) > df_chenh_lech_phi['BE_Tiền bao gồm thuế'].fillna(0), -(df_chenh_lech_phi['Phí thu'].fillna(0) - df_chenh_lech_phi['BE_Tiền bao gồm thuế'].fillna(0)), 0)
-        df_chenh_lech_phi[self.cot_phi_dieu_chinh_be] = np.where(df_chenh_lech_phi['Phí thu'].fillna(0) < df_chenh_lech_phi['BE_Tiền bao gồm thuế'].fillna(0), -(df_chenh_lech_phi['BE_Tiền bao gồm thuế'].fillna(0) - df_chenh_lech_phi['Phí thu'].fillna(0)), 0)
-        df_chenh_lech_phi[self.cot_ghi_chu_xu_ly] = np.where(df_chenh_lech_phi['Phí thu'].fillna(0) > df_chenh_lech_phi['BE_Tiền bao gồm thuế'].fillna(0), 'FE thu thừa, cần trả lại', 'BE thu thiếu, cần bổ sung')
-        return df_chenh_lech_phi
+        dieu_kien_chenh_lech = df['Phí thu'].fillna(0) != df['BE_Tiền bao gồm thuế'].fillna(0)
+        df['chenh_lech_phi'] = df['BE_Tiền bao gồm thuế'].fillna(0) - df['Phí thu'].fillna(0)
+        df.loc[dieu_kien_chenh_lech, self.cot_phi_dieu_chinh_fe] = df.loc[dieu_kien_chenh_lech, self.cot_phi_dieu_chinh_fe] + np.where(df.loc[dieu_kien_chenh_lech, 'Phí thu'].fillna(0) > df.loc[dieu_kien_chenh_lech, 'BE_Tiền bao gồm thuế'].fillna(0), -(df.loc[dieu_kien_chenh_lech, 'Phí thu'].fillna(0) - df.loc[dieu_kien_chenh_lech, 'BE_Tiền bao gồm thuế'].fillna(0)), 0)
+        df.loc[dieu_kien_chenh_lech, self.cot_phi_dieu_chinh_be] = df.loc[dieu_kien_chenh_lech, self.cot_phi_dieu_chinh_be] + np.where(df.loc[dieu_kien_chenh_lech, 'Phí thu'].fillna(0) < df.loc[dieu_kien_chenh_lech, 'BE_Tiền bao gồm thuế'].fillna(0), -(df.loc[dieu_kien_chenh_lech, 'BE_Tiền bao gồm thuế'].fillna(0) - df.loc[dieu_kien_chenh_lech, 'Phí thu'].fillna(0)), 0)
 
-    def doi_soat_phi_tach_df(self, df_gop_chuan_hoa):
+        # Update ghi_chu_xu_ly for chênh lệch
+        mask_chenh_lech = df['Phí thu'].fillna(0) != df['BE_Tiền bao gồm thuế'].fillna(0)
+        df.loc[mask_chenh_lech, self.cot_ghi_chu_xu_ly] = np.where(
+            df.loc[mask_chenh_lech, self.cot_ghi_chu_xu_ly] == '',
+            np.where(df.loc[mask_chenh_lech, 'Phí thu'].fillna(0) > df.loc[mask_chenh_lech, 'BE_Tiền bao gồm thuế'].fillna(0),
+                     'FE thu thừa, cần trả lại',
+                     'BE thu thiếu, cần bổ sung'),
+            df.loc[mask_chenh_lech, self.cot_ghi_chu_xu_ly] + '; ' + np.where(
+                df.loc[mask_chenh_lech, 'Phí thu'].fillna(0) > df.loc[mask_chenh_lech, 'BE_Tiền bao gồm thuế'].fillna(0),
+                'FE thu thừa, cần trả lại',
+                'BE thu thiếu, cần bổ sung'
+            )
+        )
+        return df
+    
+    def doi_soat(self, df_gop_chuan_hoa):
         """
-        Quy trình đối soát phí thu tổng hợp, trả về dictionary chứa các DataFrame kết quả.
+        Quy trình đối soát phí thu tổng hợp, trả về một DataFrame duy nhất
+        với đầy đủ dữ liệu các bước và cột mô tả.
 
         Args:
             df_gop_chuan_hoa (pd.DataFrame): DataFrame đã gộp và chuẩn hóa.
 
         Returns:
-            dict: Dictionary chứa các DataFrame kết quả cho từng phương án kiểm tra.
+            pd.DataFrame: DataFrame duy nhất đã được đánh dấu, điều chỉnh
+                        và có cột mô tả các bước.
         """
-        df_khong_thu_phi, df_tra_phi = self.tach_nhom_xe_ko_thu_phi(df_gop_chuan_hoa.copy())
-        df_tra_phi['Trạm'] = df_tra_phi['Làn chuẩn'].apply(self._get_tram_from_lane)
+        try:
+            df = df_gop_chuan_hoa.copy()
+            df[self.cot_buoc_doi_soat] = 'Dữ liệu ban đầu'
+            df[self.cot_ket_qua_doi_soat] = 'Khớp'
+            df[self.cot_nguyen_nhan_doi_soat] = None
+            df[self.cot_thu_phi_nguoi] = False
+            df[self.cot_chi_co_be] = False
 
-        df_doc_nhieu_luot = self.kiem_tra_doc_nhieu_luot(df_tra_phi.copy())
-        df_thu_phi_nguoi = self.kiem_tra_thu_phi_nguoi(df_tra_phi.copy())
-        df_fe_co_be_khong = self.kiem_tra_fe_co_be_khong(df_tra_phi.copy())
-        # df_chenh_lech_phi = self.kiem_tra_chenh_lech_phi(df_tra_phi.copy())
+            # Bước 1: Xác định xe không thu phí và đánh dấu
+            df = self.tach_nhom_xe_ko_thu_phi(df)
+            df.loc[df[self.cot_xe_khong_thu_phi], self.cot_buoc_doi_soat] = 'Xác định xe không thu phí'
+            df.loc[df[self.cot_xe_khong_thu_phi], self.cot_ket_qua_doi_soat] = 'Không thu phí'
+            df.loc[df[self.cot_xe_khong_thu_phi], self.cot_nguyen_nhan_doi_soat] = 'Xe thuộc diện miễn phí/ưu tiên'
 
-        df_khop = df_tra_phi[~df_tra_phi.index.isin(df_doc_nhieu_luot.index) &
-                             ~df_tra_phi.index.isin(df_thu_phi_nguoi.index) &
-                             ~df_tra_phi.index.isin(df_fe_co_be_khong.index) ].copy() #&~df_tra_phi.index.isin(df_chenh_lech_phi.index)
+            # Bước 2: Thêm cột trạm dựa trên làn
+            df['Trạm'] = df['Làn chuẩn'].apply(self._get_tram_from_lane)
 
-        df_khop[self.cot_ket_qua] = 'Khớp'
-        df_khop[self.cot_nguyen_nhan] = 'Không có chênh lệch'
-        df_khop[self.cot_phi_dieu_chinh_fe] = 0
-        df_khop[self.cot_phi_dieu_chinh_be] = 0
-        df_khop[self.cot_ghi_chu_xu_ly] = None
+            # Bước 3: Kiểm tra và đánh dấu lỗi đọc nhiều lượt
+            df = self.kiem_tra_doc_nhieu_luot(df)
+            df.loc[df[self.cot_loi_doc_nhieu_lan], self.cot_buoc_doi_soat] = 'Kiểm tra đọc nhiều lượt'
+            df.loc[df[self.cot_loi_doc_nhieu_lan], self.cot_ket_qua_doi_soat] = 'Nghi vấn đọc nhiều lượt'
+            df.loc[df[self.cot_loi_doc_nhieu_lan], self.cot_nguyen_nhan_doi_soat] = 'Thời gian gần giữa các lần qua trạm'
 
-        df_bao_cao = pd.concat([
-            df_khong_thu_phi,
-            df_doc_nhieu_luot,
-            df_thu_phi_nguoi,
-            df_fe_co_be_khong,
-            # df_chenh_lech_phi,
-            df_khop
-        ], ignore_index=True)
+            # Bước 4: Kiểm tra và đánh dấu thu phí nguội
+            df_thu_phi_nguoi = self.kiem_tra_thu_phi_nguoi(df[~df[self.cot_xe_khong_thu_phi]].copy())
+            df.update(df_thu_phi_nguoi)
+            df.loc[df[self.cot_thu_phi_nguoi], self.cot_buoc_doi_soat] = 'Kiểm tra thu phí nguội'
+            df.loc[df[self.cot_thu_phi_nguoi], self.cot_ket_qua_doi_soat] = 'Nghi vấn thu phí nguội'
+            df.loc[df[self.cot_thu_phi_nguoi], self.cot_nguyen_nhan_doi_soat] = 'BE có phí, FE không có phí'
 
-        results = {
-            'DoiSoat-KhongThuPhi': df_khong_thu_phi,
-            'DoiSoat-DocNhieuLan': df_doc_nhieu_luot,
-            'DoiSoat-PhiNguoi': df_thu_phi_nguoi,
-            'DoiSoat-ChiCo-FE': df_fe_co_be_khong,
-            # 'DoiSoat-GiaThuPhi': df_chenh_lech_phi,
-            'DoiSoat-Khop': df_khop,
-            'BaoCaoTong_DoiSoat': df_bao_cao
-        }
+            # Bước 5: Kiểm tra và đánh dấu trường hợp FE có BE không
+            df_fe_co_be_khong = self.kiem_tra_fe_co_be_khong(df[~df[self.cot_xe_khong_thu_phi] & ~df[self.cot_thu_phi_nguoi]].copy())
+            df.update(df_fe_co_be_khong)
+            df.loc[df[self.cot_chi_co_be], self.cot_buoc_doi_soat] = 'Kiểm tra FE có BE không'
+            df.loc[df[self.cot_chi_co_be], self.cot_ket_qua_doi_soat] = 'Chỉ có giao dịch BE'
+            df.loc[df[self.cot_chi_co_be], self.cot_nguyen_nhan_doi_soat] = 'FE có phí, BE không có phí'
 
-        return results
+            # Bước 6: Kiểm tra và đánh dấu chênh lệch phí
+            # mask_for_chenh_lech = ~(df[self.cot_xe_khong_thu_phi] | df[self.cot_thu_phi_nguoi] | df[self.cot_chi_co_be])
+            mask_for_chenh_lech = ~ (df[self.cot_xe_khong_thu_phi] | df[self.cot_thu_phi_nguoi] | df[self.cot_chi_co_be])
+            df_chenh_lech_phi = self.kiem_tra_chenh_lech_phi(df[mask_for_chenh_lech].copy())
+            df.update(df_chenh_lech_phi)
+            dieu_kien_chenh_lech = (df['Phí điều chỉnh FE'] != 0) | (df['Phí điều chỉnh BE'] != 0)
+            df.loc[dieu_kien_chenh_lech, self.cot_buoc_doi_soat] = 'Kiểm tra chênh lệch phí'
+            df.loc[dieu_kien_chenh_lech, self.cot_ket_qua_doi_soat] = 'Chênh lệch phí'
+            df.loc[dieu_kien_chenh_lech, self.cot_nguyen_nhan_doi_soat] = 'Khác phí thu giữa FE và BE'
+
+
+        except Exception as e:
+            print('Lỗi file doi_soat, class DoiSoatPhi', e)
+
+        return df
 
 # class DoiSoatPhi:
 #     def __init__(self):
@@ -220,17 +255,17 @@ class DoiSoatPhi:
 
 #         Returns:
 #             tuple: Một tuple chứa hai DataFrame:
-#                    - df_khong_thu_phi_uu_tien: DataFrame chứa các xe có vé miễn phí/ưu tiên
+#                    - df_khong_thu_phi: DataFrame chứa các xe có vé miễn phí/ưu tiên
 #                                          và phí thu BE/FE là NaN hoặc = 0.
 #                    - df_tra_phi: DataFrame chứa các xe không thuộc nhóm trên.
 #         """
 #         dieu_kien_mien_phi_uu_tien = df['Loại vé chuẩn'].isin(['Miễn giảm 100%', 'UT toàn quốc', 'Miễn giảm ĐP', 'Vé quý thường', 'Vé tháng thường'])
 #         dieu_kien_phi_nan_hoac_khong = (df['Phí thu'].isna() | (df['Phí thu'] == 0)) & (df['BE_Tiền bao gồm thuế'].isna() | (df['BE_Tiền bao gồm thuế'] == 0))
 
-#         df_khong_thu_phi_uu_tien = df[dieu_kien_mien_phi_uu_tien & dieu_kien_phi_nan_hoac_khong].copy()
+#         df_khong_thu_phi = df[dieu_kien_mien_phi_uu_tien & dieu_kien_phi_nan_hoac_khong].copy()
 #         df_tra_phi = df[~(dieu_kien_mien_phi_uu_tien & dieu_kien_phi_nan_hoac_khong)].copy()
 
-#         return df_khong_thu_phi_uu_tien, df_tra_phi
+#         return df_khong_thu_phi, df_tra_phi
 
 #     def _get_tram_from_lane(self, lane):
 #         """Trích xuất tên trạm từ tên làn."""
@@ -242,44 +277,44 @@ class DoiSoatPhi:
 #                     return tram
 #         return None
 
-#     def kiem_tra_doc_nhieu_luot(self, df):
-#         """
-#         Kiểm tra và đánh dấu các trường hợp nghi vấn đọc nhiều lượt do anten.
+    # def kiem_tra_doc_nhieu_luot(self, df):
+    #     """
+    #     Kiểm tra và đánh dấu các trường hợp nghi vấn đọc nhiều lượt do anten.
 
-#         Args:
-#             df (pd.DataFrame): DataFrame chứa các xe trả phí.
+    #     Args:
+    #         df (pd.DataFrame): DataFrame chứa các xe trả phí.
 
-#         Returns:
-#             pd.DataFrame: DataFrame chứa các trường hợp nghi vấn đọc nhiều lượt.
-#         """
-#         df_nhieu_luot = df.copy()
-#         df_nhieu_luot[self.cot_so_lan_qua_tram] = df_nhieu_luot.groupby('Biển số chuẩn')['Thời gian chuẩn'].transform('count')
-#         df_nhieu_luot_filtered = df_nhieu_luot[df_nhieu_luot[self.cot_so_lan_qua_tram] >= 2].sort_values(['Biển số chuẩn', 'Thời gian chuẩn']).copy()
-#         df_nhieu_luot_filtered['Trạm'] = df_nhieu_luot_filtered['Làn chuẩn'].apply(self._get_tram_from_lane)
-#         df_nhieu_luot_filtered[self.cot_thoi_gian_cach_lan_truoc] = df_nhieu_luot_filtered.groupby('Biển số chuẩn')['Thời gian chuẩn'].diff().dt.total_seconds() / 60
-#         df_nhieu_luot_filtered[self.cot_ket_qua] = None
-#         df_nhieu_luot_filtered[self.cot_nguyen_nhan] = None
-#         df_nhieu_luot_filtered[self.cot_phi_dieu_chinh_fe] = 0
-#         df_nhieu_luot_filtered[self.cot_phi_dieu_chinh_be] = 0
-#         df_nhieu_luot_filtered[self.cot_ghi_chu_xu_ly] = None
+    #     Returns:
+    #         pd.DataFrame: DataFrame chứa các trường hợp nghi vấn đọc nhiều lượt.
+    #     """
+    #     df_nhieu_luot = df.copy()
+    #     df_nhieu_luot[self.cot_so_lan_qua_tram] = df_nhieu_luot.groupby('Biển số chuẩn')['Thời gian chuẩn'].transform('count')
+    #     df_nhieu_luot_filtered = df_nhieu_luot[df_nhieu_luot[self.cot_so_lan_qua_tram] >= 2].sort_values(['Biển số chuẩn', 'Thời gian chuẩn']).copy()
+    #     df_nhieu_luot_filtered['Trạm'] = df_nhieu_luot_filtered['Làn chuẩn'].apply(self._get_tram_from_lane)
+    #     df_nhieu_luot_filtered[self.cot_thoi_gian_cach_lan_truoc] = df_nhieu_luot_filtered.groupby('Biển số chuẩn')['Thời gian chuẩn'].diff().dt.total_seconds() / 60
+    #     df_nhieu_luot_filtered[self.cot_ket_qua] = None
+    #     df_nhieu_luot_filtered[self.cot_nguyen_nhan] = None
+    #     df_nhieu_luot_filtered[self.cot_phi_dieu_chinh_fe] = 0
+    #     df_nhieu_luot_filtered[self.cot_phi_dieu_chinh_be] = 0
+    #     df_nhieu_luot_filtered[self.cot_ghi_chu_xu_ly] = None
 
-#         dieu_kien_cung_lan = (df_nhieu_luot_filtered[self.cot_thoi_gian_cach_lan_truoc] <= 5) & (df_nhieu_luot_filtered.groupby('Biển số chuẩn')['Làn chuẩn'].shift() == df_nhieu_luot_filtered['Làn chuẩn']) & ((df_nhieu_luot_filtered['BE_Tiền bao gồm thuế'] > 0) | (df_nhieu_luot_filtered['Phí thu'] > 0))
-#         df_nhieu_luot_filtered.loc[dieu_kien_cung_lan, self.cot_ket_qua] = 'Nghi vấn đọc nhiều lượt (cùng làn)'
-#         df_nhieu_luot_filtered.loc[dieu_kien_cung_lan, self.cot_nguyen_nhan] = 'Thời gian gần, cùng làn và có phí'
-#         df_nhieu_luot_filtered.loc[dieu_kien_cung_lan, self.cot_phi_dieu_chinh_fe] = -df_nhieu_luot_filtered['Phí thu']
-#         df_nhieu_luot_filtered.loc[dieu_kien_cung_lan, self.cot_phi_dieu_chinh_be] = -df_nhieu_luot_filtered['BE_Tiền bao gồm thuế']
-#         df_nhieu_luot_filtered.loc[dieu_kien_cung_lan, self.cot_ghi_chu_xu_ly] = 'Trả lại phí do đọc trùng'
+    #     dieu_kien_cung_lan = (df_nhieu_luot_filtered[self.cot_thoi_gian_cach_lan_truoc] <= 5) & (df_nhieu_luot_filtered.groupby('Biển số chuẩn')['Làn chuẩn'].shift() == df_nhieu_luot_filtered['Làn chuẩn']) & ((df_nhieu_luot_filtered['BE_Tiền bao gồm thuế'] > 0) | (df_nhieu_luot_filtered['Phí thu'] > 0))
+    #     df_nhieu_luot_filtered.loc[dieu_kien_cung_lan, self.cot_ket_qua] = 'Nghi vấn đọc nhiều lượt (cùng làn)'
+    #     df_nhieu_luot_filtered.loc[dieu_kien_cung_lan, self.cot_nguyen_nhan] = 'Thời gian gần, cùng làn và có phí'
+    #     df_nhieu_luot_filtered.loc[dieu_kien_cung_lan, self.cot_phi_dieu_chinh_fe] = -df_nhieu_luot_filtered['Phí thu']
+    #     df_nhieu_luot_filtered.loc[dieu_kien_cung_lan, self.cot_phi_dieu_chinh_be] = -df_nhieu_luot_filtered['BE_Tiền bao gồm thuế']
+    #     df_nhieu_luot_filtered.loc[dieu_kien_cung_lan, self.cot_ghi_chu_xu_ly] = 'Trả lại phí do đọc trùng'
 
-#         dieu_kien_khac_lan_cung_tram = (df_nhieu_luot_filtered[self.cot_thoi_gian_cach_lan_truoc] <= 5) & (df_nhieu_luot_filtered.groupby('Biển số chuẩn')['Trạm'].shift() == df_nhieu_luot_filtered['Trạm']) & ((df_nhieu_luot_filtered['BE_Tiền bao gồm thuế'] > 0) | (df_nhieu_luot_filtered['Phí thu'] > 0)) & (df_nhieu_luot_filtered[self.cot_ket_qua].isna())
-#         df_nhieu_luot_filtered.loc[dieu_kien_khac_lan_cung_tram, self.cot_ket_qua] = 'Nghi vấn đọc nhiều lượt (khác làn cùng trạm)'
-#         df_nhieu_luot_filtered.loc[dieu_kien_khac_lan_cung_tram, self.cot_nguyen_nhan] = 'Thời gian gần, khác làn cùng trạm và có phí'
-#         # Logic điều chỉnh phí cho trường hợp khác làn cùng trạm cần được xem xét cụ thể hơn
-#         # Ví dụ: Lấy phí của giao dịch đầu tiên làm chuẩn, các giao dịch sau điều chỉnh về 0 hoặc theo mức phí đúng
-#         df_nhieu_luot_filtered.loc[dieu_kien_khac_lan_cung_tram, self.cot_phi_dieu_chinh_fe] = -df_nhieu_luot_filtered['Phí thu'].where(df_nhieu_luot_filtered.groupby('Biển số chuẩn')['Thời gian chuẩn'].transform('rank') > 1, 0)
-#         df_nhieu_luot_filtered.loc[dieu_kien_khac_lan_cung_tram, self.cot_phi_dieu_chinh_be] = -df_nhieu_luot_filtered['BE_Tiền bao gồm thuế'].where(df_nhieu_luot_filtered.groupby('Biển số chuẩn')['Thời gian chuẩn'].transform('rank') > 1, 0)
-#         df_nhieu_luot_filtered.loc[dieu_kien_khac_lan_cung_tram, self.cot_ghi_chu_xu_ly] = 'Cần kiểm tra, điều chỉnh phí do đọc nhiều lượt'
+    #     dieu_kien_khac_lan_cung_tram = (df_nhieu_luot_filtered[self.cot_thoi_gian_cach_lan_truoc] <= 5) & (df_nhieu_luot_filtered.groupby('Biển số chuẩn')['Trạm'].shift() == df_nhieu_luot_filtered['Trạm']) & ((df_nhieu_luot_filtered['BE_Tiền bao gồm thuế'] > 0) | (df_nhieu_luot_filtered['Phí thu'] > 0)) & (df_nhieu_luot_filtered[self.cot_ket_qua].isna())
+    #     df_nhieu_luot_filtered.loc[dieu_kien_khac_lan_cung_tram, self.cot_ket_qua] = 'Nghi vấn đọc nhiều lượt (khác làn cùng trạm)'
+    #     df_nhieu_luot_filtered.loc[dieu_kien_khac_lan_cung_tram, self.cot_nguyen_nhan] = 'Thời gian gần, khác làn cùng trạm và có phí'
+    #     # Logic điều chỉnh phí cho trường hợp khác làn cùng trạm cần được xem xét cụ thể hơn
+    #     # Ví dụ: Lấy phí của giao dịch đầu tiên làm chuẩn, các giao dịch sau điều chỉnh về 0 hoặc theo mức phí đúng
+    #     df_nhieu_luot_filtered.loc[dieu_kien_khac_lan_cung_tram, self.cot_phi_dieu_chinh_fe] = -df_nhieu_luot_filtered['Phí thu'].where(df_nhieu_luot_filtered.groupby('Biển số chuẩn')['Thời gian chuẩn'].transform('rank') > 1, 0)
+    #     df_nhieu_luot_filtered.loc[dieu_kien_khac_lan_cung_tram, self.cot_phi_dieu_chinh_be] = -df_nhieu_luot_filtered['BE_Tiền bao gồm thuế'].where(df_nhieu_luot_filtered.groupby('Biển số chuẩn')['Thời gian chuẩn'].transform('rank') > 1, 0)
+    #     df_nhieu_luot_filtered.loc[dieu_kien_khac_lan_cung_tram, self.cot_ghi_chu_xu_ly] = 'Cần kiểm tra, điều chỉnh phí do đọc nhiều lượt'
 
-#         return df_nhieu_luot_filtered[~df_nhieu_luot_filtered[self.cot_ket_qua].isna()].copy()
+    #     return df_nhieu_luot_filtered[~df_nhieu_luot_filtered[self.cot_ket_qua].isna()].copy()
 
 #     def kiem_tra_thu_phi_nguoi(self, df):
 #         """
@@ -328,13 +363,13 @@ class DoiSoatPhi:
 #             pd.DataFrame: DataFrame chứa các trường hợp chênh lệch phí.
 #         """
 #         df_chenh_lech = df.copy()
-#         df_chenh_lech['Chenh Lech Phi'] = df_chenh_lech['Phí thu'] - df_chenh_lech['BE_Tiền bao gồm thuế']
-#         df_chenh_lech_phi = df_chenh_lech[df_chenh_lech['Chenh Lech Phi'] != 0].copy()
+#         dieu_kien_chenh_lech = df_chenh_lech['Phí thu'].fillna(0) != df_chenh_lech['BE_Tiền bao gồm thuế'].fillna(0)
+#         df_chenh_lech_phi = df_chenh_lech[dieu_kien_chenh_lech].copy()
 #         df_chenh_lech_phi[self.cot_ket_qua] = 'Chênh lệch phí'
 #         df_chenh_lech_phi[self.cot_nguyen_nhan] = 'Khác phí thu giữa FE và BE'
-#         df_chenh_lech_phi[self.cot_phi_dieu_chinh_fe] = np.where(df_chenh_lech_phi['Chenh Lech Phi'] > 0, -df_chenh_lech_phi['Chenh Lech Phi'], 0)
-#         df_chenh_lech_phi[self.cot_phi_dieu_chinh_be] = np.where(df_chenh_lech_phi['Chenh Lech Phi'] < 0, -df_chenh_lech_phi['Chenh Lech Phi'], 0)
-#         df_chenh_lech_phi[self.cot_ghi_chu_xu_ly] = np.where(df_chenh_lech_phi['Chenh Lech Phi'] > 0, 'FE thu thừa, cần trả lại', 'BE thu thiếu, cần bổ sung')
+#         df_chenh_lech_phi[self.cot_phi_dieu_chinh_fe] = np.where(df_chenh_lech_phi['Phí thu'].fillna(0) > df_chenh_lech_phi['BE_Tiền bao gồm thuế'].fillna(0), -(df_chenh_lech_phi['Phí thu'].fillna(0) - df_chenh_lech_phi['BE_Tiền bao gồm thuế'].fillna(0)), 0)
+#         df_chenh_lech_phi[self.cot_phi_dieu_chinh_be] = np.where(df_chenh_lech_phi['Phí thu'].fillna(0) < df_chenh_lech_phi['BE_Tiền bao gồm thuế'].fillna(0), -(df_chenh_lech_phi['BE_Tiền bao gồm thuế'].fillna(0) - df_chenh_lech_phi['Phí thu'].fillna(0)), 0)
+#         df_chenh_lech_phi[self.cot_ghi_chu_xu_ly] = np.where(df_chenh_lech_phi['Phí thu'].fillna(0) > df_chenh_lech_phi['BE_Tiền bao gồm thuế'].fillna(0), 'FE thu thừa, cần trả lại', 'BE thu thiếu, cần bổ sung')
 #         return df_chenh_lech_phi
 
 #     def doi_soat_phi_tach_df(self, df_gop_chuan_hoa):
@@ -353,37 +388,37 @@ class DoiSoatPhi:
 #         df_doc_nhieu_luot = self.kiem_tra_doc_nhieu_luot(df_tra_phi.copy())
 #         df_thu_phi_nguoi = self.kiem_tra_thu_phi_nguoi(df_tra_phi.copy())
 #         df_fe_co_be_khong = self.kiem_tra_fe_co_be_khong(df_tra_phi.copy())
-#         df_chenh_lech_phi = self.kiem_tra_chenh_lech_phi(df_tra_phi.copy())
+#         # df_chenh_lech_phi = self.kiem_tra_chenh_lech_phi(df_tra_phi.copy())
 
 #         df_khop = df_tra_phi[~df_tra_phi.index.isin(df_doc_nhieu_luot.index) &
 #                              ~df_tra_phi.index.isin(df_thu_phi_nguoi.index) &
-#                              ~df_tra_phi.index.isin(df_fe_co_be_khong.index) &
-#                              ~df_tra_phi.index.isin(df_chenh_lech_phi.index)].copy()
-        
+#                              ~df_tra_phi.index.isin(df_fe_co_be_khong.index) ].copy() #&~df_tra_phi.index.isin(df_chenh_lech_phi.index)
+
 #         df_khop[self.cot_ket_qua] = 'Khớp'
 #         df_khop[self.cot_nguyen_nhan] = 'Không có chênh lệch'
 #         df_khop[self.cot_phi_dieu_chinh_fe] = 0
 #         df_khop[self.cot_phi_dieu_chinh_be] = 0
 #         df_khop[self.cot_ghi_chu_xu_ly] = None
-        
+
 #         df_bao_cao = pd.concat([
 #             df_khong_thu_phi,
 #             df_doc_nhieu_luot,
 #             df_thu_phi_nguoi,
 #             df_fe_co_be_khong,
-#             df_chenh_lech_phi,
+#             # df_chenh_lech_phi,
 #             df_khop
 #         ], ignore_index=True)
 
 #         results = {
+#             'XeTraPhi': df_khong_thu_phi,
 #             'DoiSoat-KhongThuPhi': df_khong_thu_phi,
 #             'DoiSoat-DocNhieuLan': df_doc_nhieu_luot,
 #             'DoiSoat-PhiNguoi': df_thu_phi_nguoi,
 #             'DoiSoat-ChiCo-FE': df_fe_co_be_khong,
-#             'DoiSoat-GiaThuPhi': df_chenh_lech_phi,
+#             # 'DoiSoat-GiaThuPhi': df_chenh_lech_phi,
 #             'DoiSoat-Khop': df_khop,
 #             'BaoCaoTong_DoiSoat': df_bao_cao
 #         }
 
 #         return results
-    
+

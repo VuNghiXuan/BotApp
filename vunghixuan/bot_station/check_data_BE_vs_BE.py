@@ -71,7 +71,7 @@ class DataComparisonWorker(QObject):
             
             # Thêm dòng cuối cho df_fe_be
             df_group_cars_time = df_nomalizer.add_summary_columns(df_group_cars_time)
-            data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'Xe_ThoiGianGiaoDich', df_group_cars_time)
+            data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'FE-BE(Nhóm xe)', df_group_cars_time)
 
             # In ra list hỏi Chat
             # print([df_group_cars_time.columns.tolist()] + df_group_cars_time.values.tolist())
@@ -105,8 +105,9 @@ class DataComparisonWorker(QObject):
 
             '2. Kết quả đối soát'
             doi_soat_cp = DoiSoatPhi()
-            dic_kq_doi_soat = doi_soat_cp.doi_soat_phi_tach_df(df_group_cars_time.copy())
-            data_for_excel.update(dic_kq_doi_soat)
+            ddf_kq_doi_soat = doi_soat_cp.doi_soat(df_group_cars_time.copy())
+            data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'BaoCaoDoiSoat', ddf_kq_doi_soat)
+            # data_for_excel.update(dic_kq_doi_soat)
 
             " 1234. Ghi dữ liệu ra file Excel"
             self.to_excel(self.output_dir, data_for_excel)

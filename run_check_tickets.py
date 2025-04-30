@@ -100,7 +100,7 @@ if __name__ == '__main__':
 
     """
     Build file ra exe
-        1. Chạy trong môi trường ảo
+        1. Chạy trong môi trường ảo: venv/scripts/activate
         2. pyinstaller run_check_tickets.spec
     """
     # Build file ra exe: pyinstaller run_check_tickets.spec
