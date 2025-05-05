@@ -1,8 +1,9 @@
 import pandas as pd
 import numpy as np
 import re
+from vunghixuan.bot_station.process_time import TimesClass
 
-class NoMalFEBE():
+class StandardizeData():
     def __init__(self, df_fe, df_be):
         self.df_fe = df_fe
         self.df_be = df_be
@@ -262,10 +263,10 @@ class NoMalFEBE():
         be_selected = self._select_and_rename_be_cols(df_be, ma_giao_dich_col, colname_be_lists)
         merged_df = self._merge_fe_be_data(fe_selected, be_selected, ma_giao_dich_col)
 
-        # Phần thêm dòng tổng
-        final_df = self._add_summary_row(merged_df, df_fe, df_be, ma_giao_dich_col, sum_colname_fe, sum_colname_be)
+        # Phần thêm dòng tổng        
+        # final_df = self._add_summary_row(merged_df, df_fe, df_be, ma_giao_dich_col, sum_colname_fe, sum_colname_be)
 
-        return final_df
+        return merged_df
 
     # Chuân hoá Sheet tổng hợp dữ liệu
     def merge_FE_BE_with_standard_mgd(self, df_list):
@@ -357,83 +358,6 @@ class NoMalFEBE():
 
         return df_copy
 
-    # def _parse_special_time(self, time_str):
-    #     """Phân tích một định dạng thời gian đặc biệt (ví dụ: DDMMYY HHMMSS)."""
-    #     if isinstance(time_str, str): # Kiểm tra kiểu dữ liệu trước khi xử lý
-    #         match = re.match(r'(\d{2})(\d{2})(\d{2}) (\d{2})(\d{2})(\d{2})', time_str)
-    #         if match:
-    #             day, month, year_short, hour, minute, second = match.groups()
-    #             year = f'20{year_short}' if int(year_short) < 100 else year_short
-    #             try:
-    #                 return pd.to_datetime(f'{year}-{month}-{day} {hour}:{minute}:{second}', errors='raise')
-    #             except ValueError:
-    #                 return pd.NaT
-    #     return pd.NaT
-
-    # def _nomal_time(self, df, col_name):
-    #     """Chuẩn hóa cột thời gian về kiểu datetime."""
-    #     if col_name in df.columns:
-    #         df[col_name] = df[col_name].str.strip("'").str.strip()
-    #         # Loại bỏ dấu ':' ở đầu nếu có
-    #         df[col_name] = df[col_name].str.lstrip(':')
-    #         time_formats = ['%d/%m/%Y %H:%M:%S', '%Y-%m-%d %H:%M:%S', '%m/%d/%Y %H:%M:%S',
-    #                         '%d-%m-%Y %H:%M:%S', '%Y/%m/%d %H:%M:%S']
-    #         for fmt in time_formats:
-    #             df[col_name] = df[col_name].fillna(pd.to_datetime(df[col_name], format=fmt, errors='coerce'))
-    #     return df
-
-    # def create_standardized_time_str(self, df):
-    #     """
-    #     Tạo cột 'Thời gian chuẩn' bằng cách kết hợp _nomal_time và _parse_special_time.
-    #     Ưu tiên giá trị từ 'BE_Thời gian qua trạm', sau đó thử 'Ngày giờ'.
-    #     """
-    #     df_copy = df.copy()
-    #     try:
-    #         # Chuẩn hóa cả hai cột về kiểu datetime
-    #         df_copy = self._nomal_time(df_copy, 'BE_Thời gian qua trạm')
-    #         df_copy = self._nomal_time(df_copy, 'Ngày giờ')
-
-    #         # Tạo cột 'Thời gian chuẩn' ưu tiên 'BE_Thời gian qua trạm'
-    #         df_copy['Thời gian chuẩn'] = df_copy['BE_Thời gian qua trạm'].where(
-    #             pd.notna(df_copy['BE_Thời gian qua trạm']),
-    #             df_copy['Ngày giờ']
-    #         )
-
-    #         # Xử lý các giá trị NaT còn lại bằng _parse_special_time (nếu cần)
-    #         mask_nat = df_copy['Thời gian chuẩn'].isna()
-    #         # Chỉ áp dụng _parse_special_time cho các giá trị không phải NaT
-    #         df_copy.loc[mask_nat, 'Thời gian chuẩn'] = df_copy.loc[mask_nat, 'Thời gian chuẩn'].apply(
-    #             lambda x: self._parse_special_time(x) if pd.notna(x) else x
-    #         )
-
-    #     except Exception as e:
-    #         print('Lỗi:', e)
-    #     return df_copy
-    
-   
-    def create_standardized_time_str(self, df):
-        """
-        Tạo cột 'Thời gian chuẩn' dạng chuỗi 'HH:MM:SS' ưu tiên BE, sau đó FE (chỉ lấy giờ).
-        """
-        df_copy = df.copy()
-        standardized_time_list = []
-
-        be_times = df_copy['BE_Thời gian qua trạm'].astype(str).tolist()
-        fe_times = df_copy['Ngày giờ'].astype(str).tolist()
-
-        for idx, fe_time in enumerate(fe_times):
-            if pd.notna(pd.to_datetime(fe_time, errors='coerce')): # Kiểm tra xem BE có phải là datetime hợp lệ không
-                standardized_time_list.append(fe_time)
-            elif pd.notna(pd.to_datetime(be_times[idx], errors='coerce')): # Kiểm tra xem FE có phải là datetime hợp lệ không
-                try:
-                    standardized_time_list.append(be_times[idx].replace("'", "").split(' ')[1])
-                except IndexError:
-                    standardized_time_list.append(None) # Xử lý trường hợp không tách được giờ
-            else:
-                standardized_time_list.append(None)
-
-        df_copy['Thời gian chuẩn'] = standardized_time_list
-        return df_copy
             
 
     "Phiên bản 1.0.8"
@@ -485,7 +409,7 @@ class NoMalFEBE():
 
     
 
-    def group_cars_and_time_from_df_FE_BE(self, df):
+    def group_cars_from_df_FE_BE(self, df):
         """
         Gộp các dòng có cùng 'Biển số chuẩn' và sắp xếp theo 'Thời gian chuẩn'.
 
@@ -499,14 +423,14 @@ class NoMalFEBE():
             print("Lỗi: DataFrame cần có cột 'Biển số chuẩn' và 'Thời gian chuẩn'.")
             return df
         
-        # Chuyển cột 'Thời gian chuẩn' sang kiểu datetime nếu chưa phải
-        if not pd.api.types.is_datetime64_any_dtype(df['Thời gian chuẩn']):
-            try:
-                df['Thời gian chuẩn'] = pd.to_datetime(df['Thời gian chuẩn'], errors='coerce')
-                # df['Thời gian chuẩn'] = pd.to_datetime(df['Thời gian chuẩn'], format='%m/%d/%Y %I:%M:%S %p', errors='coerce')
-            except Exception as e:
-                print(f"Lỗi chuyển đổi kiểu dữ liệu cho cột 'Thời gian chuẩn': {e}")
-                return df
+        # # Chuyển cột 'Thời gian chuẩn' sang kiểu datetime nếu chưa phải
+        # if not pd.api.types.is_datetime64_any_dtype(df['Thời gian chuẩn']):
+        #     try:
+        #         df['Thời gian chuẩn'] = pd.to_datetime(df['Thời gian chuẩn'], errors='coerce')
+        #         # df['Thời gian chuẩn'] = pd.to_datetime(df['Thời gian chuẩn'], format='%m/%d/%Y %I:%M:%S %p', errors='coerce')
+        #     except Exception as e:
+        #         print(f"Lỗi chuyển đổi kiểu dữ liệu cho cột 'Thời gian chuẩn': {e}")
+        #         return df
 
         # Gộp các dòng có cùng 'Biển số chuẩn'
         grouped = df.groupby('Biển số chuẩn', dropna=True)
@@ -615,32 +539,48 @@ class NoMalFEBE():
 
         return df
     
-    def nomal_fe_be(self):
+    def is_valid_time(self, value):
+        try:
+            pd.to_datetime(value)
+            return True
+        except ValueError:
+            return False
+    
+    def merge_df_be_and_be(self):
         # 1. Chuẩn hoá lại file gốc            
         fe_processed, be_processed = self.load_and_standardize_fe_be()
         
         # 2. Gộp 2 fe và be thành df_fe_be
         df_list = [fe_processed, be_processed]            
         df_FE_BE = self.merge_FE_BE_with_standard_mgd(df_list) # Chuẩn hoá mã giao dịch
-
-        # 3. Thêm cột chuẩn hoá biển số
-        df_FE_BE = self.create_col_standard_car_license(df_FE_BE)
-
-        # 4. Thêm cột chuẩn hoá vé lượt
-        df_FE_BE = self.create_col_standarder_tickets_type(df_FE_BE)
-
-        # 5. Thêm cột chuẩn hoá thời gian
-        df_FE_BE = self.create_standardized_time_str(df_FE_BE)
-
-
-        # print(df_FE_BE[['Ngày giờ', 'BE_Thời gian qua trạm', 'Thời gain chuẩn']]) #'BE_Thời gian qua trạm']), df_copy['Ngày giờ']
-
-        # 'test'
-        # nan_time_df = df_FE_BE[df_FE_BE['Thời gian chuẩn'].isna()]
-        # abc =nan_time_df[['Ngày giờ', 'BE_Thời gian qua trạm', 'Thời gian chuẩn']]
-        # print(abc)
-        # df_FE_BE[['Ngày giờ','BE_Thời gian qua trạm']]
-
         return fe_processed, be_processed, df_FE_BE
+    
+    def standarize_fe_be(self, df_FE_BE):
+        try:
+            
+
+            # 1. Thêm cột chuẩn hoá biển số
+            df_FE_BE = self.create_col_standard_car_license(df_FE_BE)
+
+            # 2. Gộp xe theo biển
+            df_FE_BE = self.group_cars_from_df_FE_BE(df_FE_BE)
+
+            # 2. Thêm cột chuẩn hoá vé lượt
+            df_FE_BE = self.create_col_standarder_tickets_type(df_FE_BE)
+
+            # 3. Thêm cột chuẩn hoá thời gian
+            process_time = TimesClass()
+            df_FE_BE = process_time.create_standardized_time(df_FE_BE)
+            # print(df_FE_BE['Thời gian chuẩn'])
+          
+            
+            return df_FE_BE
+        
+
+       
+        except Exception as e:
+            print('LỖi nomal_fe_be', e)
+            return None, None, None
+        
 
     

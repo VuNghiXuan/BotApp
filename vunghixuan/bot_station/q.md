@@ -1,510 +1,349 @@
-Thêm tham số truyền vào là add_col_name mục đích thêm vào df 3 cột có tên Điều chỉnh phí thu(BE) , Điều chỉnh phí thu(FE) và CL sau điều chỉnh. Với giá trị cột   Điều chỉnh phí thu(BE) = giá trị cột BE_Tiền bao gồm thuế, giá trị cột 
+Tôi muốn viết hàm kiẻm tra 1 lượt vé đi xem phí thu của BE hay FE sai hay cả 2 đều đúng và xe có bao nhiêu lượt 1 ngày, với nội dung như sau:
+Phương án thu phí theo self.mapping_lane với 1 lượt đi bao gồm vào và ra dự án
+
+1. Nếu xe khởi hành từ ngoài dự án vào, thì làn đầu tiên thu phí, các làn ra miễn phí (miễn đúng làn ra, còn bị thu phí các làn không phải là làn ra là bị quét trùng lỗi antent)
+2. Nếu xe khởi hành từ dự án đi ra (làn ra là làn đầu tiên sẽ thu phí (các loại xe này là dân sinh sống trong khu vực dự án nên có khởi hành khác với các loại xe khác), và nếu đi vào cùng 1 trạm nhưng đúng làn vào thì cũng xem như 1 lượt di hợp lệ. Nếu trường hợp này xe vào mà trạm khác thì được xem là lượt đi mới phải tính phí lượt đi mới.
+Hãy thêm các hàm và biến trong Transaction và các biến phù hợp. Cuối cùng xuất ra all_transactions_data thêm các cột như tôi kiểm tra các hàm đọc lỗi antent
+Lưu ý chỉ xuất ra 2 cột:
+    +Cột Mô tả hành trình (Lượt đi thứ mấy, ra vào trạm (làn nào), phí (FE=bao nhiêu) nhỏ hoặc lớn (BE=bao nhiêu))
+        Lưu ý: 1 lượt đi hợp lý khi điều kiện lỗi Antent không bị đọc trùng lặp và là số nguyên, nếu xe chỉ có vào chưa ra thì ghi chú xe chưa quay đầu ngược lại
 
 
-Dựa giá trị colums và values của df_predict_cam bên dưới: Hãy viết hàm lọc dò tìm các lỗi do cam đọc nhiều lần cho cùng 1 biển số làm chênh lệch phí
-Chẳng hạn theo dữ liệu tao nhìn thấy: Trên cùng biển 51H85678 ở 3 dòng kế nhau, thời gian lần lượt là: 13-04-2025 16:08:12, 13-04-2025 16:12:46, 13-04-2025 16:13:35 chứng tỏ bị quét trùng 2 lần làn số 04 và 1 làn số 03
-Mày tìm và chỉ ra các lỗi khác giúp tao
 
-[['Mã giao dịch', 'Số xe đăng ký', 'Mã thẻ', 'Phí thu', 'Làn', 'Ngày giờ', 'Loại vé', 'BE_Biển số xe', 'BE_Số etag', 'BE_Loại giá vé', 'BE_Tiền bao gồm thuế', 'BE_Thời gian qua trạm', 'BE_Làn', 'Chênh lệch (Phí thu)', 'Biển số chuẩn', 'Làn chuẩn', 'Loại vé chuẩn', 'Thời gian chuẩn'], ["'1739215153", "'11D00136", "'3416214B8812700005049171", 19000.0, '12', "'15-04-2025 03:56:57", 'Vé lượt thường', "'11D-001.36T", "'3416214B8812700005049171", 'Giá thường', 19000.0, '15/04/2025 03:54:45', 'Làn 12 (2B)', 0, "'11D00136", 'Làn 12', 'Giá thường', Timestamp('2025-04-29 03:54:45')], ["'1739381620", "'11D00136", "'3416214B8812700005049171", 19000.0, '07', "'15-04-2025 07:17:04", 'Vé lượt thường', "'11D-001.36T", "'3416214B8812700005049171", 'Giá thường', 19000.0, '15/04/2025 07:17:13', 'Làn 7 (3B)', 0, "'11D00136", 'Làn 7', 'Giá thường', Timestamp('2025-04-29 07:17:13')], ["'1739421901", nan, nan, nan, nan, nan, nan, "'11D-001.36T", "'3416214B8812700005049171", 'Miễn phí quay đầu', 0.0, '15/04/2025 07:47:03', 'Làn 6 (3A)', 0, "'11D00136", 'Làn 6', 'Miễn phí quay đầu', Timestamp('2025-04-29 07:47:03')], ["'1739706170", "'11D00136", "'3416214B8812700005049171", 19000.0, '09', "'15-04-2025 10:49:33", 'Vé lượt thường', "'11D-001.36T", "'3416214B8812700005049171", 'Giá thường', 19000.0, '15/04/2025 10:49:47', 'Làn 9 (4)', 0, "'11D00136", 'Làn 9', 'Giá thường', Timestamp('2025-04-29 10:49:47')], ["'1739710744", nan, nan, nan, nan, nan, nan, "'11D-001.36T", "'3416214B8812700005049171", 'Miễn phí quay đầu', 0.0, '15/04/2025 10:52:37', 'Làn 7 (3B)', 0, "'11D00136", 'Làn 7', 'Miễn phí quay đầu', Timestamp('2025-04-29 10:52:37')], ["'1739199679", "'12H02845", "'3416214B880B610005104206", 157000.0, '09', "'15-04-2025 03:14:11", 'Vé lượt thường', "'12H-028.45V", "'3416214B880B610005104206", 'Giá thường', 157000.0, '15/04/2025 03:14:15', 'Làn 9 (4)', 0, "'12H02845", 'Làn 9', 'Giá thường', Timestamp('2025-04-29 03:14:15')], ["'1739665317", "'15A00459", "'3416214B940027CD0005FC76", 19000.0, '10', "'15-04-2025 10:22:50", 'Vé lượt thường', "'15A00459T", "'3416214B940027CD0005FC76", 'Giá thường', 19000.0, '15/04/2025 10:22:52', 'Làn 10 (2A)', 0, "'15A00459", 'Làn 10', 'Giá thường', Timestamp('2025-04-29 10:22:52')], ["'1739861828", nan, nan, nan, nan, nan, nan, "'15A00459T", "'3416214B940027CD0005FC76", 'Miễn phí quay đầu', 0.0, '15/04/2025 12:40:11', 'Làn 12 (2B)', 0, "'15A00459", 'Làn 12', 'Miễn phí quay đầu', Timestamp('2025-04-29 12:40:11')], ["'1739696719", nan, nan, nan, nan, nan, nan, "'15A-384.71T", "'3416214B88AEBC0004198965", 'Miễn giảm 100% trạm 2A 2B trạm 768', 0.0, '15/04/2025 10:43:18', 'Làn 10 (2A)', 0, "'15A38471", 'Làn 10', 'Miễn giảm 100%', Timestamp('2025-04-29 
-10:43:18')], ["'1740250404", "'15A61055", "'3416214B9400E2D701030B2B", 19000.0, '08', "'15-04-2025 16:48:38", 'Vé lượt thường', "'15A61055T", "'3416214B9400E2D701030B2B", 'Giá thường', 19000.0, '15/04/2025 16:48:43', 'Làn 8 (4)', 0, "'15A61055", 'Làn 8', 'Giá thường', Timestamp('2025-04-29 16:48:43')], ["'1740254745", nan, nan, nan, nan, nan, nan, "'15A61055T", "'3416214B9400E2D701030B2B", 'Miễn phí quay đầu', 0.0, '15/04/2025 16:51:26', 'Làn 7 (3B)', 0, "'15A61055", 'Làn 7', 'Miễn phí quay đầu', Timestamp('2025-04-29 16:51:26')], ["'1740276980", nan, nan, nan, nan, nan, nan, "'15A61055T", "'3416214B9400E2D701030B2B", 'Miễn phí liên trạm', 0.0, '15/04/2025 17:05:34', 'Làn 12 (2B)', 0, "'15A61055", 'Làn 12', 'Miễn phí liên trạm', Timestamp('2025-04-29 17:05:34')], ["'1739455114", "'15C22652", "'3416214B88BC710002329900", 157000.0, '06', "'15-04-2025 08:09:42", 'Vé lượt thường', "'15C-226.52V", "'3416214B88BC710002329900", 'Giá thường', 157000.0, '15/04/2025 08:09:46', 'Làn 6 (3A)', 0, "'15C22652", 'Làn 6', 'Giá thường', Timestamp('2025-04-29 08:09:46')], ["'1740612194", "'15H00093", "'3416214B88BB9F0005416401", 157000.0, '09', "'15-04-2025 22:17:40", 'Vé lượt thường', "'15H-000.93V", "'3416214B88BB9F0005416401", 'Giá thường', 157000.0, '15/04/2025 22:17:44', 'Làn 9 (4)', 0, "'15H00093", 'Làn 9', 'Giá thường', Timestamp('2025-04-29 22:17:44')], ["'1739235251", "'15H02174", "'3416214B88B6FC0001221839", 157000.0, '09', "'15-04-2025 04:39:07", 'Vé lượt thường', "'15H-021.74V", "'3416214B88B6FC0001221839", 'Giá thường', 157000.0, '15/04/2025 04:39:10', 'Làn 9 (4)', 0, "'15H02174", 'Làn 9', 'Giá thường', Timestamp('2025-04-29 04:39:10')], ["'1739170186", "'15H06900", "'3416214B880BF40005480672", 157000.0, '09', "'15-04-2025 01:46:57", 'Vé lượt thường', "'15H-069.00V", "'3416214B880BF40005480672", 'Giá thường', 157000.0, '15/04/2025 01:47:01', 'Làn 9 (4)', 0, "'15H06900", 'Làn 9', 'Giá thường', Timestamp('2025-04-29 01:47:01')], ["'1739504182", "'15H07010", "'3416214B88C1350005414643", 157000.0, '09', "'15-04-2025 08:41:17", 'Vé lượt thường', "'15H-070.10V", "'3416214B88C1350005414643", 'Giá thường', 157000.0, '15/04/2025 08:41:19', 'Làn 9 (4)', 0, "'15H07010", 'Làn 9', 'Giá thường', Timestamp('2025-04-29 08:41:19')], ["'1739509771", nan, nan, nan, nan, nan, nan, "'15H-070.10V", "'3416214B88C1350005414643", 'Miễn phí quay đầu', 0.0, '15/04/2025 08:44:51', 'Làn 7 (3B)', 0, "'15H07010", 'Làn 7', 'Miễn phí quay đầu', Timestamp('2025-04-29 08:44:51')], ["'1739537721", nan, nan, nan, nan, nan, nan, "'15H-070.10V", "'3416214B88C1350005414643", 'Miễn phí liên trạm', 0.0, '15/04/2025 09:02:14', 'Làn 12 (2B)', 0, "'15H07010", 'Làn 12', 'Miễn phí liên trạm', Timestamp('2025-04-29 09:02:14')], ["'1740098983", "'15H07010", "'3416214B88C1350005414643", 157000.0, '10', "'15-04-2025 15:14:48", 'Vé lượt thường', "'15H-070.10V", "'3416214B88C1350005414643", 'Giá thường', 157000.0, '15/04/2025 15:14:52', 'Làn 10 (2A)', 0, "'15H07010", 'Làn 10', 'Giá thường', Timestamp('2025-04-29 15:14:52')], ["'1740030699", nan, nan, nan, nan, nan, nan, "'15H-070.10V", "'3416214B88C1350005414643", 'Miễn phí quay đầu', 0.0, '15/04/2025 15:34:19', 'Làn 5 (3A)', 0, "'15H07010", 'Làn 5', 'Miễn phí quay đầu', Timestamp('2025-04-29 15:34:19')], ["'1740653641", "'15H07010", "'3416214B88C1350005414643", 157000.0, '09', "'15-04-2025 23:23:40", 'Vé lượt thường', "'15H-070.10V", "'3416214B88C1350005414643", 'Giá thường', 157000.0, '15/04/2025 23:23:44', 'Làn 9 (4)', 0, "'15H07010", 'Làn 9', 'Giá thường', Timestamp('2025-04-29 23:23:44')], ["'1739243104", "'15H07143", "'3416214B88D7460005480673", 157000.0, '09', "'15-04-2025 04:53:27", 'Vé lượt thường', "'15H-071.43V", "'3416214B88D7460005480673", 'Giá thường', 157000.0, '15/04/2025 04:53:30', 'Làn 9 (4)', 0, "'15H07143", 'Làn 9', 'Giá thường', Timestamp('2025-04-29 04:53:30')], ["'1739159084", "'15H07344", "'3416214B887FC80005376701", 157000.0, '09', "'15-04-2025 01:15:22", 'Vé lượt thường', "'15H-073.44V", "'3416214B887FC80005376701", 'Giá thường', 157000.0, '15/04/2025 01:15:24', 'Làn 9 (4)', 0, "'15H07344", 'Làn 9', 'Giá thường', Timestamp('2025-04-29 01:15:24')], ["'1739160189", nan, nan, nan, nan, nan, nan, "'15H-073.44V", "'3416214B887FC80005376701", 'Miễn phí quay đầu', 0.0, '15/04/2025 01:18:26', 'Làn 7 (3B)', 0, "'15H07344", 'Làn 7', 'Miễn phí quay đầu', Timestamp('2025-04-29 01:18:26')], ["'1739164780", nan, nan, nan, nan, nan, nan, "'15H-073.44V", "'3416214B887FC80005376701", 'Miễn phí liên trạm', 0.0, '15/04/2025 01:31:04', 'Làn 12 (2B)', 0, "'15H07344", 'Làn 12', 'Miễn phí liên trạm', Timestamp('2025-04-29 01:31:04')], ["'1739512198", "'15H07344", "'3416214B887FC80005376701", 157000.0, '10', "'15-04-2025 08:46:15", 'Vé lượt thường', "'15H-073.44V", "'3416214B887FC80005376701", 'Giá thường', 157000.0, '15/04/2025 08:46:18', 'Làn 10 (2A)', 0, "'15H07344", 'Làn 
-10', 'Giá thường', Timestamp('2025-04-29 08:46:18')], ["'1739550567", nan, nan, nan, nan, nan, nan, "'15H-073.44V", "'3416214B887FC80005376701", 'Miễn phí quay đầu', 0.0, '15/04/2025 09:10:23', 'Làn 5 (3A)', 0, "'15H07344", 'Làn 5', 'Miễn phí quay đầu', Timestamp('2025-04-29 09:10:23')], ["'1740534978", "'15H07344", "'3416214B887FC80005376701", 157000.0, '10', "'15-04-2025 20:40:16", 'Vé lượt thường', "'15H-073.44V", "'3416214B887FC80005376701", 'Giá thường', 157000.0, '15/04/2025 20:40:18', 'Làn 10 (2A)', 0, "'15H07344", 'Làn 10', 'Giá thường', Timestamp('2025-04-29 20:40:18')], ["'1740552779", nan, nan, nan, nan, nan, nan, "'15H-073.44V", "'3416214B887FC80005376701", 'Miễn phí quay đầu', 0.0, '15/04/2025 21:00:47', 'Làn 5 (3A)', 0, "'15H07344", 'Làn 5', 'Miễn phí quay đầu', Timestamp('2025-04-29 21:00:47')], ["'1740649929", "'15H07523", "'3416214B888BE60005416501", 157000.0, '09', "'15-04-2025 23:16:52", 'Vé lượt thường', "'15H-075.23V", "'3416214B888BE60005416501", 'Giá thường', 157000.0, '15/04/2025 23:16:56', 'Làn 9 (4)', 0, "'15H07523", 'Làn 9', 'Giá thường', Timestamp('2025-04-29 23:16:56')], ["'1740651607", nan, nan, nan, nan, nan, nan, "'15H-075.23V", "'3416214B888BE60005416501", 'Miễn phí quay đầu', 0.0, '15/04/2025 23:19:56', 'Làn 7 (3B)', 0, "'15H07523", 'Làn 7', 'Miễn phí quay đầu', Timestamp('2025-04-29 23:19:56')], ["'1740659352", nan, nan, nan, nan, nan, nan, "'15H-075.23V", "'3416214B888BE60005416501", 'Miễn phí liên trạm', 0.0, '15/04/2025 23:34:36', 'Làn 12 (2B)', 0, "'15H07523", 'Làn 12', 'Miễn phí liên trạm', Timestamp('2025-04-29 23:34:36')], ["'1739206820", "'15H07947", 
-"'3416214B8811000003433662", 157000.0, '09', "'15-04-2025 03:33:25", 'Vé lượt thường', "'15H-079.47V", "'3416214B8811000003433662", 'Giá thường', 157000.0, '15/04/2025 03:33:42', 'Làn 9 (4)', 0, "'15H07947", 'Làn 9', 'Giá thường', Timestamp('2025-04-29 03:33:42')], ["'1739511729", "'15H07947", "'3416214B8811000003433662", 157000.0, '10', "'15-04-2025 08:45:57", 'Vé lượt thường', "'15H-079.47V", "'3416214B8811000003433662", 'Giá thường', 157000.0, '15/04/2025 08:46:01', 'Làn 10 (2A)', 0, "'15H07947", 'Làn 10', 'Giá thường', Timestamp('2025-04-29 08:46:01')], ["'1739550342", nan, nan, nan, nan, nan, nan, "'15H-079.47V", "'3416214B8811000003433662", 'Miễn phí quay đầu', 0.0, '15/04/2025 09:10:12', 'Làn 5 (3A)', 0, "'15H07947", 'Làn 5', 'Miễn phí quay đầu', Timestamp('2025-04-29 09:10:12')], ["'1740460824", "'15H07947", "'3416214B8811000003433662", 157000.0, '08', "'15-04-2025 19:22:13", 'Vé lượt thường', "'15H-079.47V", "'3416214B8811000003433662", 'Giá thường', 157000.0, '15/04/2025 19:22:17', 'Làn 8 (4)', 0, "'15H07947", 'Làn 8', 'Giá thường', Timestamp('2025-04-29 19:22:17')], ["'1740652613", nan, nan, nan, nan, nan, nan, "'15H-079.47V", "'3416214B8811000003433662", 'Miễn phí quay đầu', 0.0, '15/04/2025 23:21:51', 'Làn 6 (3A)', 0, "'15H07947", 'Làn 6', 'Miễn phí quay đầu', Timestamp('2025-04-29 23:21:51')], ["'1739145505", "'17A06918", "'3416214B88DE950004424017", 19000.0, '06', "'15-04-2025 00:40:07", 'Vé lượt thường', "'17A06918T", "'3416214B88DE950004424017", 'Giá thường', 19000.0, '15/04/2025 00:40:13', 'Làn 6 (3A)', 0, "'17A06918", 'Làn 6', 'Giá thường', Timestamp('2025-04-29 00:40:13')], ["'1739320854", nan, nan, nan, nan, nan, nan, "'17A-343.97T", "'3416214B887F6A0004198318", 'Miễn phí quay đầu', 0.0, '15/04/2025 06:29:19', 'Làn 3 (1B)', 0, "'17A34397", 'Làn 3', 
-'Miễn phí quay đầu', Timestamp('2025-04-29 06:29:19')], ["'1739838614", "'17A34397", "'3416214B887F6A0004198318", 19000.0, '02', "'15-04-2025 12:23:06", 'Vé lượt thường', "'17A-343.97T", "'3416214B887F6A0004198318", 'Giá thường', 19000.0, '15/04/2025 12:23:20', 'Làn 2 (1A)', 0, "'17A34397", 'Làn 2', 'Giá thường', Timestamp('2025-04-29 12:23:20')], ["'1739858790", nan, nan, nan, nan, nan, nan, "'17A-343.97T", "'3416214B887F6A0004198318", 'Miễn phí quay đầu', 0.0, '15/04/2025 12:37:53', 'Làn 3 (1B)', 0, "'17A34397", 'Làn 3', 'Miễn phí quay đầu', Timestamp('2025-04-29 12:37:53')], ["'
+import pandas as pd
+import numpy as np
+import traceback
 
-Câu 2:
+class Transaction:
+    def __init__(self, transaction):
+        """
+        Khởi tạo đối tượng ThongTinGiaoDich từ một giao dịch.
+        """
+        # self.transaction = transaction #'50E11142
+        self.tran_reasonable_time_minutes = 10 # Thời gian hợp lý (phút)
+        self.tran_unusual_time_minutes = 10 # Thời gian chuyến đi bất thường (phút)
+        self.duplicate_transactions_minutes = 5 # Giao dịch xảy ra trùng lặp do Antent (phút)
 
-Trạm thu phí của dự án đặt trên 2 tuyến đường:
-I. Phần trạm và làn:
-      1. Đường Đồng Khởi, có trạm và làn như sau:
-            - Tên trạm 2A: 
-                  + Làn vào: 10, 11. 
-                  + Làn ra: 12
-      2. Đường ĐT768, có trạm và làn như sau:
-            - Tên trạm 1A: 
-                  + Làn vào: 1, 2
-                  + Làn ra: 3, 4
-            - Tên trạm 3B: 
-                  + Làn vào: 7, 8, 9
-            - Tên trạm 3A:         
-                  + Làn ra: 5, 6
-      
+        self.time = None
+        self.station = None
+        self.lane_type = None
+        self.fee_of_fe = None
+        self.fee_of_be = None
+        self.diff_fee = None # Chênh lệch phí giữa FE và BE
+        self.time_diff_to_previous = None
+        self.index_in_df = None # Lưu trữ index của giao dịch trong DataFrame
+        self.lane = None
+        self.info = {} # Dictionary để lưu trữ thông tin đầy đủ của giao dịch
 
-II. Loại vé:
-      Vé miễn phí: UT toàn quốc
+        self.mapping_lane = {
+            '2A': {'vào': ['Làn 10', 'Làn 11'], 'ra': ['Làn 12'], 'trạm': 'Đồng Khởi_2A'},
+            '1A': {'vào': ['Làn 1', 'Làn 2'], 'ra': ['Làn 3', 'Làn 4'], 'trạm': 'ĐT768_1A'},
+            '3B': {'vào': ['Làn 7', 'Làn 8', 'Làn 9'], 'ra': [], 'trạm': 'ĐT768_3B'},
+            '3A': {'vào': [], 'ra': ['Làn 5', 'Làn 6'], 'trạm': 'ĐT768_3A'}}
 
-III. Quy trình thu phí:
-      Các loại vé: 
-            - Giá thường: Nếu xe khởi đầu vào dự án và ra 1 trong các làn ra thì chỉ tính phí 1 lần. 
-            - Giá thường: Ngược lại trường hợp trên, nếu xe khởi hành từ trong dự án đi ra và vào trong ngày thì cũng thu phí 1 lần
-            - UT toàn quốc: không tính phí
-            - Vé tháng thường: Các loại vé mua tháng (đóng theo tháng), qua trạm xem như là không tính phí
-            - Miễn phí quay đầu: là vé kiểm soát việc quay đầu không tính phí
-            - Miễn giảm 100% trạm 2A 2B trạm 768: là loại vé dành cho quân đội trong khu vực dự án
-            - Miễn phí liên trạm: là qua các trạm đều không tính phí
-
-Viết class kiểm tra, đói chiếu việc tính toán và so sánh giữa FE và BE, với tham số truyền vào là biển số xe, loại vé, list làn xe, list thời gian, list phí thu BE, list Phí thu FE. Kết quả so sánh BE tính đúng hay FE tính đúng
+        # Phân tích biến đổi kiểu dữ liệu
+        self._parse_transaction(transaction)
 
 
-Câu 3: Tôi có 1 dữ liệu qua trạm trong ngày thu thập từ FE và BE được chuyển đổi sang list từ dataframe và được chuẩn hoá sắp xếp theo biển số xe bên dưới:
-Nhiệm vụ là đối soát các cột trong BE và FE xem dữ liệu nào tính đúng, dữ liệu nào tính sai (Không loại trừ cả 2 đều sai)
-- Mô tả các trường hợp sai thu phí sai (xem cột chênh lệch phí thu) :
-      1. Giao địch chỉ có trong BE: Có các trường hợp do xe trốn trạm, anten đọc được và thu phí nguội, nhưng FE không có dữ liệu này (Trường hợp này cần bổ sung cột phí thu cho FE)
-      2. Giao địch chỉ có trong FE: Do sự cố đường truyền tín hiệu kém, nên BE không ghi nhần được hoặc do cúp điện và FE thu trực tiếp, và các sự cố khác liên qua (Bổ sung tôi thêm thông tin này để tôi hiểu rõ hơn).
-      3. Anten tại trạm quét nhiều lần trên 1 thẻ, trên 1 biển số
-      4. Tính sai lượt các làn ra vào nghĩa là làn ra lại tính thêm phí (thay gì mới đi 1 lượt thì được tính nhiều lượt)
-- Mô tả trạm làn và lượt vé như sau:
-      Trạm thu phí của dự án đặt trên 2 tuyến đường:
-      I. Phần trạm và làn:
-            1. Đường Đồng Khởi, có trạm và làn như sau:
-                  - Tên trạm 2A: 
-                        + Làn vào: 10, 11. 
-                        + Làn ra: 12
-            2. Đường ĐT768, có trạm và làn như sau:
-                  - Tên trạm 1A: 
-                        + Làn vào: 1, 2
-                        + Làn ra: 3, 4
-                  - Tên trạm 3B: 
-                        + Làn vào: 7, 8, 9
-                  - Tên trạm 3A:         
-                        + Làn ra: 5, 6           
+    def _parse_transaction(self, transaction):
+        """Phân tích thông tin từ giao dịch."""
+        try:
+            self.info = transaction.to_dict() # Lưu trữ toàn bộ giao dịch dưới dạng dictionary
+            self.car_name = transaction['Biển số chuẩn']
+            self.name = transaction['Mã giao dịch']
+            self.time = pd.to_datetime(transaction['Thời gian chuẩn'])
+            # Xử lý 'Phí thu'
+            phi_thu = pd.to_numeric(transaction['Phí thu'], errors='coerce')
+            self.fee_of_fe = phi_thu if pd.notna(phi_thu) else 0
 
-      II. Loại vé:
-            Vé miễn phí: UT toàn quốc
+            # Xử lý 'BE_Tiền bao gồm thuế'
+            be_tien = pd.to_numeric(transaction['BE_Tiền bao gồm thuế'], errors='coerce')
+            self.fee_of_be = be_tien if pd.notna(be_tien) else 0
 
-      III. Quy trình thu phí:
-            Các loại vé: 
-                  - Giá thường: Nếu xe khởi đầu vào dự án và ra 1 trong các làn ra thì chỉ tính phí 1 lần. 
-                  - Giá thường: Ngược lại trường hợp trên, nếu xe khởi hành từ trong dự án đi ra và vào trong ngày thì cũng thu phí 1 lần
-                  - UT toàn quốc: không tính phí
-                  - Vé tháng thường: Các loại vé mua tháng (đóng theo tháng), qua trạm xem như là không tính phí
-                  - Miễn phí quay đầu: là vé kiểm soát việc quay đầu không tính phí
-                  - Miễn giảm 100% trạm 2A 2B trạm 768: là loại vé dành cho quân đội trong khu vực dự án
-                  - Miễn phí liên trạm: là qua các trạm đều không tính phí
+            self.lane = str(transaction['Làn chuẩn'])
+            self.station = self._get_station_from_lane(self.lane )
+            self.lane_type = self._get_lane_type(self.lane )
+            self.diff_fee = self.fee_of_fe - self.fee_of_be #if pd.notna(self.fee_of_fe) and pd.notna(self.fee_of_be) else 0
+            self.index_in_df = transaction.name # Lấy index từ Series
+            
+            # 1. Nghi vấn lỗi antent
+            self.time_diff_to_previous = None
+            self.fix_antent = False
+            self.antent_doubt = '' # NGhi vấn lỗi antent
 
-Hãy cho tôi quy trình và phương án để tìm ra cách đối soát theo phương pháp loại suy dần các chênh lệch và tôi cần các cột trung gian nào (ví dụ như: Cột Tiên đoán ban đầu, cột phí tính đúng, cột ghi chú,...)
-
-[['Mã giao dịch', 'Số xe đăng ký', 'Mã thẻ', 'Phí thu', 'Làn', 'Ngày giờ', 'Loại vé', 'BE_Biển số xe', 'BE_Số etag', 'BE_Loại giá vé', 'BE_Tiền 
-bao gồm thuế', 'BE_Thời gian qua trạm', 'BE_Làn', 'Mã giao dịch chuẩn', 'Chênh lệch (Phí thu)', 'Biển số chuẩn', 'Làn chuẩn', 'Loại vé chuẩn', 'Thời gian chuẩn'], ["'0", "'00A52003", "'3416214B94002BF5000409C1", 0.0, '10', "'13-04-2025 16:38:50", 'UT toàn quốc', nan, nan, nan, nan, nan, 
-nan, "'0", 0, "'00A52003", 'Làn 10', 'UT toàn quốc', Timestamp('2025-04-29 16:38:50')], ["'0", "'00A52003", "'3416214B94002BF5000409C1", 0.0, '12', "'13-04-2025 18:45:06", 'UT toàn quốc', nan, nan, nan, nan, nan, nan, "'0", 0, "'00A52003", 'Làn 12', 'UT toàn quốc', Timestamp('2025-04-29 
-18:45:06')], ["'0", "'00A52030", "'3416214B94003FF4000409E2", 0.0, '10', "'13-04-2025 10:33:25", 'UT toàn quốc', nan, nan, nan, nan, nan, nan, "'0", 0, "'00A52030", 'Làn 10', 'UT toàn quốc', Timestamp('2025-04-29 10:33:25')], ["'1736693950", "'00A52030", "'3416214B94003FF4000409E2", 0.0, '12', "'13-04-2025 11:22:27", 'Vé lượt thường', nan, nan, nan, nan, nan, nan, "'1736693950", 0, "'00A52030", 'Làn 12', 'Giá thường', Timestamp('2025-04-29 11:22:27')], ["'0", "'00A52051", "'3416214B94003222A003E38D", 0.0, '10', "'13-04-2025 21:50:27", 'UT toàn quốc', nan, nan, nan, nan, nan, nan, "'0", 0, "'00A52051", 'Làn 10', 'UT toàn quốc', Timestamp('2025-04-29 21:50:27')], ["'0", "'00A52093", "'3416214B9400E619000409AB", 0.0, '10', "'13-04-2025 14:08:48", 'UT toàn quốc', nan, nan, nan, nan, nan, nan, "'0", 0, "'00A52093", 'Làn 10', 'UT toàn quốc', Timestamp('2025-04-29 14:08:48')], ["'1736193778", "'11D00136", "'3416214B8812700005049171", 19000.0, '12', "'13-04-2025 03:22:32", 'Vé lượt thường', "'11D-001.36T", "'3416214B8812700005049171", 'Giá thường', 19000.0, '13/04/2025 03:20:16', 'Làn 12 (2B)', "'1736193778", 0, "'11D00136", 'Làn 12', 'Giá thường', Timestamp('2025-04-29 03:20:16')], ["'1736242057", nan, nan, nan, nan, nan, nan, "'11D-001.36T", "'3416214B8812700005049171", 'Miễn phí quay đầu', 0.0, '13/04/2025 05:13:12', 'Làn 10 (2A)', "'1736242057", 0, "'11D00136", 'Làn 10', 'Miễn phí quay đầu', Timestamp('2025-04-29 05:13:12')], ["'1736506783", "'14A12644", "'3416214B887B000000361762", 19000.0, '03', "'13-04-2025 09:08:33", 'Vé lượt thường', "'14A-126.44T", "'3416214B887B000000361762", 'Giá thường', 19000.0, '13/04/2025 09:09:04', 'Làn 3 (1B)', "'1736506783", 0, "'14A12644", 'Làn 3', 'Giá thường', Timestamp('2025-04-29 09:09:04')], ["'1737496395", nan, nan, nan, nan, nan, nan, "'14A-126.44T", "'3416214B887B000000361762", 'Miễn phí quay đầu', 0.0, 
-'13/04/2025 20:40:43', 'Làn 1 (1A)', "'1737496395", 0, "'14A12644", 'Làn 1', 'Miễn phí quay đầu', Timestamp('2025-04-29 20:40:43')], ["'1736851112", "'14C31604", "'3416214B8872A40002004068", 19000.0, '11', "'13-04-2025 13:22:16", 'Vé lượt thường', "'14C-316.04T", "'3416214B8872A40002004068", 'Giá thường', 19000.0, '13/04/2025 13:22:55', 'Làn 11 (2A)', "'1736851112", 0, "'14C31604", 'Làn 11', 'Giá thường', Timestamp('2025-04-29 13:22:55')], ["'1737138605", "'15A24855", "'3416214B8881270002531833", 19000.0, '05', "'13-04-2025 16:10:53", 'Vé lượt thường', "'15A-248.55T", "'3416214B8881270002531833", 'Giá thường', 19000.0, '13/04/2025 16:10:55', 'Làn 5 (3A)', "'1737138605", 0, "'15A24855", 'Làn 5', 'Giá thường', Timestamp('2025-04-29 16:10:55')], ["'1737601252", nan, nan, nan, nan, nan, nan, "'15A-248.55T", "'3416214B8881270002531833", 'Miễn phí quay đầu', 0.0, '13/04/2025 22:46:32', 'Làn 8 (4)', "'1737601252", 0, "'15A24855", 'Làn 8', 'Miễn phí quay đầu', Timestamp('2025-04-29 22:46:32')], ["'1736442532", "'15A38471", "'3416214B88AEBC0004198965", 0.0, '12', "'13-04-2025 08:27:03", 'Miễn giảm ĐP', "'15A-384.71T", "'3416214B88AEBC0004198965", 'Miễn giảm 100% trạm 2A 2B trạm 768', 0.0, '13/04/2025 08:24:57', 'Làn 12 (2B)', "'1736442532", 0, "'15A38471", 'Làn 12', 'Miễn giảm ĐP', Timestamp('2025-04-29 08:24:57')], ["'1736630794", "'15A38471", "'3416214B88AEBC0004198965", 0.0, '10', "'13-04-2025 10:32:45", 'Miễn giảm ĐP', "'15A-384.71T", "'3416214B88AEBC0004198965", 'Miễn giảm 100% trạm 2A 2B trạm 768', 0.0, '13/04/2025 10:32:46', 'Làn 10 (2A)', "'1736630794", 0, "'15A38471", 'Làn 10', 'Miễn giảm ĐP', Timestamp('2025-04-29 10:32:46')], ["'1736692336", "'15A57547", "'3416214B88461A0002058970", 19000.0, '10', "'13-04-2025 11:18:51", 'Vé lượt thường', "'15A-575.47V", "'3416214B88461A0002058970", 'Giá thường', 19000.0, '13/04/2025 11:18:56', 'Làn 10 (2A)', "'1736692336", 0, "'15A57547", 'Làn 10', 'Giá thường', Timestamp('2025-04-29 11:18:56')], ["'1736145752", "'15H00093", "'3416214B88BB9F0005416401", 157000.0, '06', "'13-04-2025 00:58:25", 'Vé lượt thường', "'15H-000.93V", "'3416214B88BB9F0005416401", 'Giá thường', 157000.0, '13/04/2025 00:58:28', 'Làn 6 (3A)', "'1736145752", 0, "'15H00093", 'Làn 6', 'Giá thường', Timestamp('2025-04-29 00:58:28')], ["'1736202288", nan, nan, 
-nan, nan, nan, nan, "'15H-021.74V", "'3416214B88B6FC0001221839", 'Miễn phí quay đầu', 0.0, '13/04/2025 03:44:50', 'Làn 6 (3A)', "'1736202288", 0, "'15H02174", 'Làn 6', 'Miễn phí quay đầu', Timestamp('2025-04-29 03:44:50')], ["'1737452967", "'15H06900", "'3416214B880BF40005480672", 157000.0, '08', "'13-04-2025 19:58:18", 'Vé lượt thường', "'15H-069.00V", "'3416214B880BF40005480672", 'Giá thường', 157000.0, '13/04/2025 19:58:20', 
-'Làn 8 (4)', "'1737452967", 0, "'15H06900", 'Làn 8', 'Giá thường', Timestamp('2025-04-29 19:58:20')], ["'1736472378", nan, nan, nan, nan, nan, nan, "'15H-070.10V", "'3416214B88C1350005414643", 'Miễn phí quay đầu', 0.0, '13/04/2025 08:45:28', 'Làn 9 (4)', "'1736472378", 0, "'15H07010", 'Làn 9', 'Miễn phí quay đầu', Timestamp('2025-04-29 08:45:28')], ["'1736477975", nan, nan, nan, nan, nan, nan, "'15H-070.10V", "'3416214B88C1350005414643", 'Miễn phí liên trạm', 0.0, '13/04/2025 08:49:19', 'Làn 7 (3B)', "'1736477975", 0, "'15H07010", 'Làn 7', 'Miễn phí liên trạm', Timestamp('2025-04-29 08:49:19')], ["'1736503301", "'15H07010", "'3416214B88C1350005414643", 157000.0, '12', "'13-04-2025 09:08:27", 'Vé lượt thường', "'15H-070.10V", "'3416214B88C1350005414643", 'Giá thường', 157000.0, '13/04/2025 09:06:15', 'Làn 12 (2B)', "'1736503301", 0, "'15H07010", 'Làn 12', 'Giá thường', Timestamp('2025-04-29 09:06:15')], ["'1736629535", nan, nan, nan, nan, nan, nan, "'15H-070.10V", "'3416214B88C1350005414643", 'Miễn phí quay đầu', 0.0, '13/04/2025 10:31:49', 'Làn 10 (2A)', "'1736629535", 0, "'15H07010", 'Làn 10', 'Miễn phí quay đầu', Timestamp('2025-04-29 10:31:49')], ["'1736653964", "'15H07010", "'3416214B88C1350005414643", 157000.0, '05', "'13-04-2025 10:49:42", 'Vé lượt thường', "'15H-070.10V", "'3416214B88C1350005414643", 'Giá thường', 157000.0, '13/04/2025 10:49:45', 'Làn 5 (3A)', "'1736653964", 0, "'15H07010", 'Làn 5', 'Giá thường', Timestamp('2025-04-29 10:49:45')], ["'1737317545", nan, nan, nan, nan, nan, nan, "'15H-070.10V", "'3416214B88C1350005414643", 'Miễn phí quay đầu', 0.0, '13/04/2025 18:03:06', 'Làn 9 (4)', "'1737317545", 0, "'15H07010", 'Làn 9', 'Miễn phí quay đầu', Timestamp('2025-04-29 18:03:06')], 
-["'1737333204", nan, nan, nan, nan, nan, nan, "'15H-070.10V", "'3416214B88C1350005414643", 'Miễn phí liên trạm', 0.0, '13/04/2025 18:14:45', 'Làn 7 (3B)', "'1737333204", 0, "'15H07010", 'Làn 7', 'Miễn phí liên trạm', Timestamp('2025-04-29 18:14:45')], ["'1737361800", "'15H07010", "'3416214B88C1350005414643", 157000.0, '12', "'13-04-2025 18:39:16", 'Vé lượt thường', "'15H-070.10V", "'3416214B88C1350005414643", 'Giá thường', 157000.0, '13/04/2025 18:37:02', 'Làn 12 (2B)', "'1737361800", 0, "'15H07010", 'Làn 12', 'Giá thường', Timestamp('2025-04-29 18:37:02')], ["'1737522890", "'15H07010", "'3416214B88C1350005414643", 157000.0, '05', "'13-04-2025 21:07:00", 'Vé lượt thường', "'15H-070.10V", "'3416214B88C1350005414643", 'Giá thường', 157000.0, '13/04/2025 21:07:01', 'Làn 5 (3A)', "'1737522890", 0, "'15H07010", 'Làn 5', 'Giá thường', Timestamp('2025-04-29 21:07:01')], ["'1737614154", "'15H07143", "'3416214B88D7460005480673", 157000.0, '08', "'13-04-2025 23:08:24", 'Vé lượt thường', "'15H-071.43V", 
-"'3416214B88D7460005480673", 'Giá thường', 157000.0, '13/04/2025 23:08:26', 'Làn 8 (4)', "'1737614154", 0, "'15H07143", 'Làn 8', 'Giá thường', Timestamp('2025-04-29 23:08:26')], ["'1736238642", "'15H07344", "'3416214B887FC80005376701", 157000.0, '08', "'13-04-2025 05:07:12", 'Vé lượt thường', "'15H-073.44V", "'3416214B887FC80005376701", 'Giá thường', 157000.0, '13/04/2025 05:07:14', 'Làn 8 (4)', "'1736238642", 0, "'15H07344", 'Làn 8', 'Giá thường', Timestamp('2025-04-29 05:07:14')], ["'1736240141", nan, nan, nan, nan, nan, nan, "'15H-073.44V", "'3416214B887FC80005376701", 'Miễn phí quay đầu', 0.0, '13/04/2025 05:09:57', 'Làn 7 (3B)', "'1736240141", 0, "'15H07344", 'Làn 7', 'Miễn phí quay đầu', Timestamp('2025-04-29 05:09:57')], ["'1736247384", nan, nan, nan, nan, nan, nan, "'15H-073.44V", "'3416214B887FC80005376701", 'Miễn phí liên trạm', 0.0, '13/04/2025 05:21:59', 'Làn 12 (2B)', "'1736247384", 0, "'15H07344", 'Làn 12', 'Miễn phí liên trạm', Timestamp('2025-04-29 05:21:59')], ["'1736642554", 
-"'15H07344", "'3416214B887FC80005376701", 157000.0, '10', "'13-04-2025 10:41:10", 'Vé lượt thường', "'15H-073.44V", "'3416214B887FC80005376701", 'Giá thường', 157000.0, '13/04/2025 10:41:14', 'Làn 10 (2A)', "'1736642554", 0, "'15H07344", 'Làn 10', 'Giá thường', Timestamp('2025-04-29 10:41:14')], ["'1736666197", nan, nan, nan, nan, nan, nan, "'15H-073.44V", "'3416214B887FC80005376701", 'Miễn phí quay đầu', 0.0, '13/04/2025 10:59:01', 'Làn 5 (3A)', "'1736666197", 0, "'15H07344", 'Làn 5', 'Miễn phí quay đầu', Timestamp('2025-04-29 10:59:01')], ["'1736190081", "'15H07523", 
-"'3416214B888BE60005416501", 157000.0, '09', "'13-04-2025 03:08:43", 'Vé lượt thường', "'15H-075.23V", "'3416214B888BE60005416501", 'Giá thường', 157000.0, '13/04/2025 03:08:59', 'Làn 9 (4)', "'1736190081", 0, "'15H07523", 'Làn 9', 'Giá thường', Timestamp('2025-04-29 03:08:59')], ["'1736191239", nan, nan, nan, nan, nan, nan, "'15H-075.23V", "'3416214B888BE60005416501", 'Miễn phí quay đầu', 0.0, '13/04/2025 03:12:30', 'Làn 7 (3B)', "'1736191239", 0, "'15H07523", 'Làn 7', 'Miễn phí quay đầu', Timestamp('2025-04-29 03:12:30')], ["'1736196312", nan, nan, nan, nan, nan, nan, "'15H-075.23V", "'3416214B888BE60005416501", 'Miễn phí liên trạm', 0.0, '13/04/2025 03:27:29', 'Làn 12 (2B)', "'1736196312", 0, "'15H07523", 'Làn 12', 'Miễn phí liên trạm', Timestamp('2025-04-29 03:27:29')], ["'1736528213", "'15H07523", "'3416214B888BE60005416501", 157000.0, '10', "'13-04-2025 09:21:20", 'Vé lượt thường', "'15H-075.23V", "'3416214B888BE60005416501", 'Giá thường', 157000.0, '13/04/2025 09:21:23', 'Làn 10 (2A)', 
-"'1736528213", 0, "'15H07523", 'Làn 10', 'Giá thường', Timestamp('2025-04-29 09:21:23')], ["'1736566694", nan, nan, nan, nan, nan, nan, "'15H-075.23V", "'3416214B888BE60005416501", 'Miễn phí quay đầu', 0.0, '13/04/2025 09:47:28', 'Làn 5 (3A)', "'1736566694", 0, "'15H07523", 'Làn 5', 'Miễn phí quay đầu', Timestamp('2025-04-29 09:47:28')], ["'1736969195", "'15H07762", "'3416214B88D2860005416489", 157000.0, '10', "'13-04-2025 14:34:03", 'Vé lượt thường', "'15H-077.62V", "'3416214B88D2860005416489", 'Giá thường', 157000.0, '13/04/2025 14:34:05', 'Làn 10 (2A)', "'1736969195", 0, "'15H07762", 'Làn 10', 'Giá thường', Timestamp('2025-04-29 14:34:05')], ["'1737000715", nan, nan, nan, nan, nan, nan, "'15H-077.62V", "'3416214B88D2860005416489", 'Miễn phí quay đầu', 0.0, '13/04/2025 14:52:04', 'Làn 5 (3A)', "'1737000715", 0, "'15H07762", 'Làn 5', 'Miễn phí quay đầu', Timestamp('2025-04-29 14:52:04')], ["'1736166719", "'15H07947", "'3416214B8811000003433662", 157
-
-Nôi dung kiểm tra phí thu để đối soát giữa Fe và BE dựa vào df đã gộp và chuẩn hoá 1 số cột, kèm theo dữ liệu bên dưới: 
-1. Viết hàm tách nhóm xe theo vé ưu tiên và miễn phí (gồm các vé: 'Miễn giảm 100%', 'UT toàn quốc', 'Miễn giảm ĐP', 'Vé quý thường', 'Vé tháng thường') dựa vào cột Loại vé chuẩn. Điều kiện kiểm Phí thu của BE và FE = 0
-2. Danh sách còn lại là danh sách xe trả phí, sẽ có các trường hợp:
-      - Chênh lệch thu phí do anten đọc nhiều lượt trên cùng 1 biển số, hoặc đọc nhiều lần trên 1 thẻ, quy trình kiểm soát mục này như sau:
-            + Dựa vào df còn lại lọc ra từng nhóm xe riêng (dựa vào biển số chuẩn), điều kiện lọc các nhóm xe này có tối thiểu 2 dòng trở lên. 
-                  . Điều kiện kiểm tra bằng vòng lặp: Nếu 2 dòng cùng 1 trạm (cùng làn hoặc khác làn cùng 1 trạm, có thời gian chênh lệch không quá 5 phút và đều tính phí), nghĩa là phí thu của cột BE>0 hoặc FE >0. Chỗ này khai báo self.mapping_lane để kiểm tra
-                  ? Câu hỏi đặt ra tại sao 2 dòng trở lên, vì thời gian lúc đối soát >24 h nên mỗi xe có 1 lượt vào và 1 lượt ra (là 2 dòng)
-      - Chênh lệch do thu phí nguội (Điều kiện nghi vấn trong trường hợp này là: BE có phí và FE không có phí, không có dữ liệu gì)
-      - Chênh lệch do FE có giao dịch tính tiền và BE không có tính phí
-      - Chênh lệch do khác phí thu giữa FE và BE
-
-2. Xác định phí thu đúng lượt (vượt quá 1 lượt đi hoặc thiếu lượt), bao gồm:
-
-Với nội dung: Xác định loại lượt ('Vào', 'Ra', 'Quay đầu', 'Liên trạm', 'Không xác định') cho mỗi giao dịch dựa trên thông tin về làn và loại vé.
-trên dựa vào 3 cột chính(làn chuẩn , loại vé chuẩn và biển số chuẩn)
-1. Kiểm tra tính phí cho từng lượt có đúng chưa như sau:
-Căn cứ vào dữ liệu gộp tách riêng từng nhóm nhỏ xe theo biển số chuẩn: Kiểm tra lượt vào ra 
-Từ dữ liệu đã gộp và chuẩn hoá: Lọc ra các dòng có chứa từng nhóm xe cùng biển 
-      Kiểm tra 
+            # 2. Lỗi chênh lệch phí do chỉ có FE hoặc BE
+            self.tran_only_fe_not_be = False
+            self.fe_or_be_doubt = '' # Nghi vấn chênh lệch BE hoặc FE
+            self.transactions_only_has_FE_or_BE()
 
 
-Tôi bỏ các cột "Kết quả đối soát" và cột" Nguyên nhân chênh lệch" và thay bằng các  cột "xe không thu phí", "lỗi đọc nhiều lần", "thu phí nguội", "Giao dịch chỉ có BE", nghĩa là khi chạy hàm nào thì sinh ra cột cho hàm đó, cột này ghi giá trị True nếu có trường hợp nghi vấn , các phần khác giữ nguyên :import pandas as pd
 
+            # 3. Kiểm tra vé lượt
+            
+            self.is_in_lane = self._check_lane_type(self.lane, 'vào')
+            self.is_out_lane = self._check_lane_type(self.lane, 'ra')
+            # 4. Kiểm tra thứ tự xe vào/ra
+          
+
+
+            self.journey_descripts = ''
+        except Exception:
+            print(f"Lỗi xảy ra trong hàm _parse_transaction:")
+            traceback.print_exc()    
+  
+        
+    def _get_station_from_lane(self, lane):
+        """Trích xuất tên trạm từ tên làn, xử lý giá trị NaN."""
+        try:
+            if pd.isna(lane):
+                return None
+            lane_str = str(lane).strip()
+            for tram_code, lane_info in self.mapping_lane.items():
+                for type in ['vào', 'ra']:
+                    if lane_str in [l.strip() for l in lane_info.get(type, [])]:
+                        return lane_info['trạm']
+            return None
+        except Exception:
+            print(f"Lỗi xảy ra trong hàm _get_station_from_lane:")
+            traceback.print_exc()
+            return None
+
+    def _get_lane_type(self, lane):
+        """Xác định loại làn (in/out) từ tên làn, xử lý giá trị NaN."""
+        try:
+            if pd.isna(lane):
+                return None
+            lane_str = str(lane).strip()
+            for tram_code, lane_info in self.mapping_lane.items():
+                if lane_str in [l.strip() for l in lane_info.get('vào', [])]:
+                    return 'vào'
+                if lane_str in [l.strip() for l in lane_info.get('ra', [])]:
+                    return 'ra'
+            return None
+        except Exception:
+            print(f"Lỗi xảy ra trong hàm _get_lane_type:")
+            traceback.print_exc()
+            return None
+
+    def _check_lane_type(self, lane, type):
+        """Kiểm tra xem làn có thuộc loại 'vào' hoặc 'ra' không."""
+        try:
+            if pd.isna(lane):
+                return False
+            lane_str = str(lane).strip()
+            for tram_code, lane_info in self.mapping_lane.items():
+                if lane_str in [l.strip() for l in lane_info.get(type, [])]:
+                    return True
+            return False
+        except Exception:
+            print(f"Lỗi xảy ra trong hàm _check_lane_type:")
+            traceback.print_exc()
+            return False
+    
+    # def add_doubt_notes(self, doubt_note):
+    #     "Thêm dòng ghi chú"
+    #     if self.antent_doubt == '': #NGhi vấn
+    #         self.antent_doubt = doubt_note #NGhi vấn
+    #     else:
+    #         self.antent_doubt += '; ' + doubt_note
+
+    def transactions_only_has_FE_or_BE(self):
+        "Thống kê các giao dịch chỉ có BE hoặc FE"
+        if self.fee_of_fe!=0 and self.fee_of_be==0:
+            self.tran_only_fe_not_be = True
+            self.fe_or_be_doubt ='Giao dịch có FE, không có BE  '
+        elif self.fee_of_fe == 0 and self.fee_of_be !=0:
+            self.fe_or_be_doubt ='Nghi vấn thu phí nguội'
+        elif self.diff_fee == 0:
+            self.fe_or_be_doubt ='Khớp giao dịch'
+
+    def calculate_the_time_difference_for_fix_from_antent(self, orther_transaction):
+        """Tính chênh lệch thời gian với giao dịch trước đó (phút)."""
+        try:
+            orther_time = pd.to_datetime(orther_transaction['Thời gian chuẩn'])
+            time_diff_seconds = (self.time - orther_time).total_seconds()
+            time_diff_minutes = time_diff_seconds / 60
+
+            if time_diff_minutes < self.duplicate_transactions_minutes:   
+                doubt_note = 'Lỗi Antents đọc trùng' # Ghi chú lỗi
+                if self.diff_fee !=0:
+                    self.time_diff_to_previous = round(time_diff_minutes,3) # Lấy chênh lệch thời gian
+
+                    self.fix_antent = True # Gán có lỗi Antent
+                    self.antent_doubt = doubt_note #NGhi vấn
+                else:
+                    "Tạm thời chấp nhận giao dòng khác lỗi"
+                    orther_transaction.time_diff_to_previous = round(time_diff_minutes,3) # Lấy chênh lệch thời gian
+                    orther_transaction.fix_antent = True # Gán có lỗi Antent
+                    orther_transaction.doubt = doubt_note # NGhi vấn
+            
+
+        except Exception:
+            print(f"Lỗi xảy ra trong hàm calculate_the_time_difference_for_fix_from_antent:")
+            traceback.print_exc()
+            self.time_diff_to_previous = None
+import pandas as pd
+import numpy as np
+from vunghixuan.bot_station.transaction_info import Transaction
+# from transaction_info import Transaction
+
+
+
+import pandas as pd
 import numpy as np
 
 
-
-
-
-class DoiSoatPhi:
-
-    def __init__(self):
-
-        self.mapping_lane = {
-
-            '2A': ['10', '11', '12'],
-
-            '1A': ['1', '2', '3', '4'],
-
-            '3B': ['7', '8', '9'],
-
-            '3A': ['5', '6']
-
-        }
-
-        self.cot_ket_qua = 'Kết quả đối soát'
-
-        self.cot_nguyen_nhan = 'Nguyên nhân chênh lệch'
-
-        self.cot_so_lan_qua_tram = 'Số lần qua trạm'
-
-        self.cot_thoi_gian_cach_lan_truoc = 'Thời gian cách lần trước (phút)'
-
-        self.cot_phi_dieu_chinh_fe = 'Phí điều chỉnh FE'
-
-        self.cot_phi_dieu_chinh_be = 'Phí điều chỉnh BE'
-
-        self.cot_ghi_chu_xu_ly = 'Ghi chú xử lý'
-
-
-
-    def tach_nhom_xe_ko_thu_phi(self, df):
-
-        """
-
-        Tách DataFrame thành hai nhóm: xe có vé ưu tiên/miễn phí và xe không.
-
-
-
-        Args:
-
-            df (pd.DataFrame): DataFrame đã gộp và chuẩn hóa, có cột 'Loại vé chuẩn',
-
-                               'Phí thu' (FE), và 'BE_Tiền bao gồm thuế' (BE).
-
-
-
-        Returns:
-
-            tuple: Một tuple chứa hai DataFrame:
-
-                   - df_khong_thu_phi: DataFrame chứa các xe có vé miễn phí/ưu tiên
-
-                                         và phí thu BE/FE là NaN hoặc = 0.
-
-                   - df_tra_phi: DataFrame chứa các xe không thuộc nhóm trên.
-
-        """
-
-        dieu_kien_mien_phi_uu_tien = df['Loại vé chuẩn'].isin(['Miễn giảm 100%', 'UT toàn quốc', 'Miễn giảm ĐP', 'Vé quý thường', 'Vé tháng thường'])
-
-        dieu_kien_phi_nan_hoac_khong = (df['Phí thu'].isna() | (df['Phí thu'] == 0)) & (df['BE_Tiền bao gồm thuế'].isna() | (df['BE_Tiền bao gồm thuế'] == 0))
-
-
-
-        df_khong_thu_phi = df[dieu_kien_mien_phi_uu_tien & dieu_kien_phi_nan_hoac_khong].copy()
-
-        df_tra_phi = df[~(dieu_kien_mien_phi_uu_tien & dieu_kien_phi_nan_hoac_khong)].copy()
-
-
-
-        return df_khong_thu_phi, df_tra_phi
-
-
-
-    def _get_tram_from_lane(self, lane):
-
-        """Trích xuất tên trạm từ tên làn."""
-
-        if pd.isna(lane):
-
-            return None
-
-        for tram, lanes in self.mapping_lane.items():
-
-            for l in lanes:
-
-                if str(l) in str(lane):
-
-                    return tram
-
-        return None
-
-
-
-    def kiem_tra_doc_nhieu_luot(self, df):
-
-        """
-
-        Kiểm tra và đánh dấu các trường hợp nghi vấn đọc nhiều lượt do anten.
-
-
-
-        Args:
-
-            df (pd.DataFrame): DataFrame chứa các xe trả phí.
-
-
-
-        Returns:
-
-            pd.DataFrame: DataFrame chứa các trường hợp nghi vấn đọc nhiều lượt.
-
-        """
-
-        df_nhieu_luot = df.copy()
-
-        df_nhieu_luot[self.cot_so_lan_qua_tram] = df_nhieu_luot.groupby('Biển số chuẩn')['Thời gian chuẩn'].transform('count')
-
-        df_nhieu_luot_filtered = df_nhieu_luot[df_nhieu_luot[self.cot_so_lan_qua_tram] >= 2].sort_values(['Biển số chuẩn', 'Thời gian chuẩn']).copy()
-
-        df_nhieu_luot_filtered['Trạm'] = df_nhieu_luot_filtered['Làn chuẩn'].apply(self._get_tram_from_lane)
-
-        df_nhieu_luot_filtered[self.cot_thoi_gian_cach_lan_truoc] = df_nhieu_luot_filtered.groupby('Biển số chuẩn')['Thời gian chuẩn'].diff().dt.total_seconds() / 60
-
-        df_nhieu_luot_filtered[self.cot_ket_qua] = None
-
-        df_nhieu_luot_filtered[self.cot_nguyen_nhan] = None
-
-        df_nhieu_luot_filtered[self.cot_phi_dieu_chinh_fe] = 0
-
-        df_nhieu_luot_filtered[self.cot_phi_dieu_chinh_be] = 0
-
-        df_nhieu_luot_filtered[self.cot_ghi_chu_xu_ly] = None
-
-
-
-        dieu_kien_cung_lan = (df_nhieu_luot_filtered[self.cot_thoi_gian_cach_lan_truoc] <= 5) & (df_nhieu_luot_filtered.groupby('Biển số chuẩn')['Làn chuẩn'].shift() == df_nhieu_luot_filtered['Làn chuẩn']) & ((df_nhieu_luot_filtered['BE_Tiền bao gồm thuế'] > 0) | (df_nhieu_luot_filtered['Phí thu'] > 0))
-
-        df_nhieu_luot_filtered.loc[dieu_kien_cung_lan, self.cot_ket_qua] = 'Nghi vấn đọc nhiều lượt (cùng làn)'
-
-        df_nhieu_luot_filtered.loc[dieu_kien_cung_lan, self.cot_nguyen_nhan] = 'Thời gian gần, cùng làn và có phí'
-
-        df_nhieu_luot_filtered.loc[dieu_kien_cung_lan, self.cot_phi_dieu_chinh_fe] = -df_nhieu_luot_filtered['Phí thu']
-
-        df_nhieu_luot_filtered.loc[dieu_kien_cung_lan, self.cot_phi_dieu_chinh_be] = -df_nhieu_luot_filtered['BE_Tiền bao gồm thuế']
-
-        df_nhieu_luot_filtered.loc[dieu_kien_cung_lan, self.cot_ghi_chu_xu_ly] = 'Trả lại phí do đọc trùng'
-
-
-
-        dieu_kien_khac_lan_cung_tram = (df_nhieu_luot_filtered[self.cot_thoi_gian_cach_lan_truoc] <= 5) & (df_nhieu_luot_filtered.groupby('Biển số chuẩn')['Trạm'].shift() == df_nhieu_luot_filtered['Trạm']) & ((df_nhieu_luot_filtered['BE_Tiền bao gồm thuế'] > 0) | (df_nhieu_luot_filtered['Phí thu'] > 0)) & (df_nhieu_luot_filtered[self.cot_ket_qua].isna())
-
-        df_nhieu_luot_filtered.loc[dieu_kien_khac_lan_cung_tram, self.cot_ket_qua] = 'Nghi vấn đọc nhiều lượt (khác làn cùng trạm)'
-
-        df_nhieu_luot_filtered.loc[dieu_kien_khac_lan_cung_tram, self.cot_nguyen_nhan] = 'Thời gian gần, khác làn cùng trạm và có phí'
-
-        # Logic điều chỉnh phí cho trường hợp khác làn cùng trạm cần được xem xét cụ thể hơn
-
-        # Ví dụ: Lấy phí của giao dịch đầu tiên làm chuẩn, các giao dịch sau điều chỉnh về 0 hoặc theo mức phí đúng
-
-        df_nhieu_luot_filtered.loc[dieu_kien_khac_lan_cung_tram, self.cot_phi_dieu_chinh_fe] = -df_nhieu_luot_filtered['Phí thu'].where(df_nhieu_luot_filtered.groupby('Biển số chuẩn')['Thời gian chuẩn'].transform('rank') > 1, 0)
-
-        df_nhieu_luot_filtered.loc[dieu_kien_khac_lan_cung_tram, self.cot_phi_dieu_chinh_be] = -df_nhieu_luot_filtered['BE_Tiền bao gồm thuế'].where(df_nhieu_luot_filtered.groupby('Biển số chuẩn')['Thời gian chuẩn'].transform('rank') > 1, 0)
-
-        df_nhieu_luot_filtered.loc[dieu_kien_khac_lan_cung_tram, self.cot_ghi_chu_xu_ly] = 'Cần kiểm tra, điều chỉnh phí do đọc nhiều lượt'
-
-
-
-        return df_nhieu_luot_filtered[~df_nhieu_luot_filtered[self.cot_ket_qua].isna()].copy()
-
-
-
-    def kiem_tra_thu_phi_nguoi(self, df):
-
-        """
-
-        Kiểm tra và trả về các trường hợp nghi vấn thu phí nguội (BE có phí, FE không).
-
-
-
-        Args:
-
-            df (pd.DataFrame): DataFrame chứa các xe trả phí.
-
-
-
-        Returns:
-
-            pd.DataFrame: DataFrame chứa các trường hợp nghi vấn thu phí nguội.
-
-        """
-
-        df_thu_phi_nguoi = df[(df['BE_Tiền bao gồm thuế'] > 0) & (df['Phí thu'].isna() | (df['Phí thu'] == 0))].copy()
-
-        df_thu_phi_nguoi[self.cot_ket_qua] = 'Nghi vấn thu phí nguội'
-
-        df_thu_phi_nguoi[self.cot_nguyen_nhan] = 'BE có phí, FE không có phí'
-
-        df_thu_phi_nguoi[self.cot_phi_dieu_chinh_fe] = df_thu_phi_nguoi['BE_Tiền bao gồm thuế']
-
-        df_thu_phi_nguoi[self.cot_phi_dieu_chinh_be] = 0
-
-        df_thu_phi_nguoi[self.cot_ghi_chu_xu_ly] = 'Bổ sung phí cho FE'
-
-        return df_thu_phi_nguoi
-
-
-
-    def kiem_tra_fe_co_be_khong(self, df):
-
-        """
-
-        Kiểm tra và trả về các trường hợp FE có phí, BE không có.
-
-
-
-        Args:
-
-            df (pd.DataFrame): DataFrame chứa các xe trả phí.
-
-
-
-        Returns:
-
-            pd.DataFrame: DataFrame chứa các trường hợp FE có phí, BE không có.
-
-        """
-
-        df_fe_co_be_khong = df[(df['Phí thu'] > 0) & (df['BE_Tiền bao gồm thuế'].isna() | (df['BE_Tiền bao gồm thuế'] == 0))].copy()
-
-        df_fe_co_be_khong[self.cot_ket_qua] = 'FE có phí, BE không có'
-
-        df_fe_co_be_khong[self.cot_nguyen_nhan] = 'FE có giao dịch tính tiền, BE không có'
-
-        df_fe_co_be_khong[self.cot_phi_dieu_chinh_fe] = 0
-
-        df_fe_co_be_khong[self.cot_phi_dieu_chinh_be] = df_fe_co_be_khong['Phí thu']
-
-        df_fe_co_be_khong[self.cot_ghi_chu_xu_ly] = 'Bổ sung phí cho BE'
-
-        return df_fe_co_be_khong
-
-
-
-    def kiem_tra_chenh_lech_phi(self, df):
-
-        """
-
-        Kiểm tra và trả về các trường hợp chênh lệch phí thu giữa FE và BE.
-
-
-
-        Args:
-
-            df (pd.DataFrame): DataFrame chứa các xe trả phí.
-
-
-
-        Returns:
-
-            pd.DataFrame: DataFrame chứa các trường hợp chênh lệch phí.
-
-        """
-
-        df_chenh_lech = df.copy()
-
-        dieu_kien_chenh_lech = df_chenh_lech['Phí thu'].fillna(0) != df_chenh_lech['BE_Tiền bao gồm thuế'].fillna(0)
-
-        df_chenh_lech_phi = df_chenh_lech[dieu_kien_chenh_lech].copy()
-
-        df_chenh_lech_phi[self.cot_ket_qua] = 'Chênh lệch phí'
-
-        df_chenh_lech_phi[self.cot_nguyen_nhan] = 'Khác phí thu giữa FE và BE'
-
-        df_chenh_lech_phi[self.cot_phi_dieu_chinh_fe] = np.where(df_chenh_lech_phi['Phí thu'].fillna(0) > df_chenh_lech_phi['BE_Tiền bao gồm thuế'].fillna(0), -(df_chenh_lech_phi['Phí thu'].fillna(0) - df_chenh_lech_phi['BE_Tiền bao gồm thuế'].fillna(0)), 0)
-
-        df_chenh_lech_phi[self.cot_phi_dieu_chinh_be] = np.where(df_chenh_lech_phi['Phí thu'].fillna(0) < df_chenh_lech_phi['BE_Tiền bao gồm thuế'].fillna(0), -(df_chenh_lech_phi['BE_Tiền bao gồm thuế'].fillna(0) - df_chenh_lech_phi['Phí thu'].fillna(0)), 0)
-
-        df_chenh_lech_phi[self.cot_ghi_chu_xu_ly] = np.where(df_chenh_lech_phi['Phí thu'].fillna(0) > df_chenh_lech_phi['BE_Tiền bao gồm thuế'].fillna(0), 'FE thu thừa, cần trả lại', 'BE thu thiếu, cần bổ sung')
-
-        return df_chenh_lech_phi
-
-
-
-    def doi_soat_phi_tach_df(self, df_gop_chuan_hoa):
-
-        """
-
-        Quy trình đối soát phí thu tổng hợp, trả về dictionary chứa các DataFrame kết quả.
-
-
-
-        Args:
-
-            df_gop_chuan_hoa (pd.DataFrame): DataFrame đã gộp và chuẩn hóa.
-
-
-
-        Returns:
-
-            dict: Dictionary chứa các DataFrame kết quả cho từng phương án kiểm tra.
-
-        """
-
-        df_khong_thu_phi, df_tra_phi = self.tach_nhom_xe_ko_thu_phi(df_gop_chuan_hoa.copy())
-
-        df_tra_phi['Trạm'] = df_tra_phi['Làn chuẩn'].apply(self._get_tram_from_lane)
-
-
-
-        df_doc_nhieu_luot = self.kiem_tra_doc_nhieu_luot(df_tra_phi.copy())
-
-        df_thu_phi_nguoi = self.kiem_tra_thu_phi_nguoi(df_tra_phi.copy())
-
-        df_fe_co_be_khong = self.kiem_tra_fe_co_be_khong(df_tra_phi.copy())
-
-        # df_chenh_lech_phi = self.kiem_tra_chenh_lech_phi(df_tra_phi.copy())
-
-
-
-        df_khop = df_tra_phi[~df_tra_phi.index.isin(df_doc_nhieu_luot.index) &
-
-                             ~df_tra_phi.index.isin(df_thu_phi_nguoi.index) &
-
-                             ~df_tra_phi.index.isin(df_fe_co_be_khong.index) ].copy() #&~df_tra_phi.index.isin(df_chenh_lech_phi.index)
-
-
-
-        df_khop[self.cot_ket_qua] = 'Khớp'
-
-        df_khop[self.cot_nguyen_nhan] = 'Không có chênh lệch'
-
-        df_khop[self.cot_phi_dieu_chinh_fe] = 0
-
-        df_khop[self.cot_phi_dieu_chinh_be] = 0
-
-        df_khop[self.cot_ghi_chu_xu_ly] = None
-
-
-
-        df_bao_cao = pd.concat([
-
-            df_khong_thu_phi,
-
-            df_doc_nhieu_luot,
-
-            df_thu_phi_nguoi,
-
-            df_fe_co_be_khong,
-
-            # df_chenh_lech_phi,
-
-            df_khop
-
-        ], ignore_index=True)
-
-
-
-        results = {
-
-            'XeTraPhi': df_khong_thu_phi,
-
-            'DoiSoat-KhongThuPhi': df_khong_thu_phi,
-
-            'DoiSoat-DocNhieuLan': df_doc_nhieu_luot,
-
-            'DoiSoat-PhiNguoi': df_thu_phi_nguoi,
-
-            'DoiSoat-ChiCo-FE': df_fe_co_be_khong,
-
-            # 'DoiSoat-GiaThuPhi': df_chenh_lech_phi,
-
-            'DoiSoat-Khop': df_khop,
-
-            'BaoCaoTong_DoiSoat': df_bao_cao
-
-        }
-
-
-
-        return results
+class Car:
+    def __init__(self, car_license, journey):
+        """
+        Khởi tạo đối tượng Car: là tổng các lượt đi trong ngày (24h)
+        """
+        try:
+            self.name = car_license
+            self.journey = journey.sort_values(by='Thời gian chuẩn').reset_index(drop=True) # Giữ lại index sau khi sort
+            self.total_journey = len(self.journey)
+            self.transactions = []
+            self.create_transactions()
+            self._update_time_diff_column_doubt_fix_antent() # Cập nhật cột sau khi tạo transactions
+        except Exception as e:
+            print(f'Lỗi hàm __init__ trong class Car: {e}')
+            self.name = None
+            self.journey = pd.DataFrame()
+            self.total_journey = 0
+            self.transactions = []
+
+    def create_transactions(self):
+        """
+        Tạo các đối tượng Transaction từ DataFrame và tính toán chênh lệch thời gian.
+        """
+        try:
+            for i in range(self.total_journey):
+                transaction_row = self.journey.iloc[i]
+                trans = Transaction(transaction_row)
+                if i > 0:
+                    trans.calculate_the_time_difference_for_fix_from_antent(self.journey.iloc[i-1])
+                self.transactions.append(trans)
+        except Exception as e:
+            print(f'Lỗi hàm create_transactions trong class Car: {e}')
+            self.transactions = []
+
+    
+
+    def _update_time_diff_column_doubt_fix_antent(self):
+        """
+        Cập nhật cột 'T/gian 2 lượt (phút)' của DataFrame.
+        """
+        try:
+            time_diff_values = [tran.time_diff_to_previous for tran in self.transactions]
+            # self.journey['T/gian 2 lượt (phút)'] = time_diff_values
+            # Kiểm tra có chênh lệch phí 
+            ""
+        except Exception as e:
+            print(f'Lỗi hàm _update_time_diff_column_doubt_fix_antent trong class Car: {e}')
+            if 'T/gian 2 lượt (phút)' in self.journey.columns:
+                self.journey['T/gian 2 lượt (phút)'] = np.nan
+
+    def get_journey_df(self):
+        """
+        Trả về DataFrame của hành trình xe với cột 'T/gian 2 lượt (phút)'.
+        """
+        try:
+            return self.journey
+        except Exception as e:
+            print(f'Lỗi hàm get_journey_df trong class Car: {e}')
+            return pd.DataFrame()
+
+class Cars():
+    def __init__(self, df_has_fee):
+        try:
+            self.df_has_fee = df_has_fee
+            self.name = 'Xe trả phí'
+            self.car_journeys = {} # Dictionary để lưu trữ các đối tượng Car
+
+            # Thêm hành trình xe và giao dịch vào dự án
+            self.create_car_journeys()
+        except Exception as e:
+            print(f'Lỗi hàm __init__ trong class Cars: {e}')
+            self.df_has_fee = pd.DataFrame()
+            self.car_journeys = {}
+
+    def create_car_journeys(self):
+        try:
+            for name, group in self.df_has_fee.groupby('Biển số chuẩn'):
+                group_sorted = group.sort_values('Thời gian chuẩn').reset_index(drop=True)
+                car = Car(name, group_sorted)
+                self.car_journeys[name] = car # Lưu trữ đối tượng Car
+        except Exception as e:
+            print(f'Lỗi hàm create_car_journeys trong class Cars: {e}')
+            self.car_journeys = {}
+
+    def get_all_journeys_df(self):
+        """
+        Trả về một DataFrame chứa thông tin của tất cả các hành trình xe,
+        bao gồm cả cột 'T/gian 2 lượt (phút)'.
+        """
+        try:
+            all_journeys = []
+            for car_license, car_obj in self.car_journeys.items():
+                journey_df = car_obj.get_journey_df()
+                all_journeys.append(journey_df)
+
+            if all_journeys:
+                final_df = pd.concat(all_journeys, ignore_index=True)
+                return final_df
+            else:
+                return pd.DataFrame()
+        except Exception as e:
+            print(f'Lỗi hàm get_all_journeys_df trong class Cars: {e}')
+            return pd.DataFrame()
+
+    def get_transactions_info_df(self):
+        """
+        Trả về DataFrame chứa thông tin giao dịch từ tất cả các xe,
+        bao gồm tất cả các cột ban đầu của Transaction và thêm
+        'T/gian 2 lượt (phút)' và 'Chênh lệch phí FE-BE'.
+        """
+        try:
+            all_transactions_data = []
+            for car_license, car_obj in self.car_journeys.items():
+                for trans in car_obj.transactions:
+                    transaction_info = trans.info.copy()  # Lấy bản sao dictionary từ thuộc tính 'info' của Transaction
+                    
+                    transaction_info['Chênh lệch phí FE-BE'] = trans.diff_fee
+                    # 1. Lỗi antent
+                    transaction_info['Lỗi Antent'] = trans.fix_antent
+                    transaction_info['T/gian 2 lượt (phút)'] = trans.time_diff_to_previous
+                    transaction_info['Nghi vấn lỗi Antent'] = trans.antent_doubt
+
+                    # 2. Lỗi giao địch chỉ 1 phía BE hoặc FE
+                    transaction_info['Giao dịch có FE hoặc BE'] = trans.tran_only_fe_not_be
+                    transaction_info['Nghi vấn giao dịch 1 phía'] = trans.fe_or_be_doubt
+
+                    all_transactions_data.append(transaction_info)
+            return pd.DataFrame(all_transactions_data)
+        except Exception as e:
+            print(f'Lỗi hàm get_transactions_info_df trong class Cars: {e}')
+            return pd.DataFrame()
+
+
+if __name__ == '__main__':
+    head = ['Mã giao dịch', 'Số xe đăng ký', 'Mã thẻ', 'Phí thu', 'Làn', 'Ngày giờ', 'Loại vé', 'BE_Biển số xe', 'BE_Số etag', 'BE_Loại giá vé', 'BE_Tiền bao gồm thuế', 'BE_Thời gian qua trạm', 'BE_Làn', 'Mã giao dịch chuẩn', 'Biển số chuẩn', 'Làn chuẩn', 'Loại vé chuẩn', 'Thời gian chuẩn', 'Xe không trả phí']
+    val = [["'1736121104", "'50H20700", "'3416214B8817620004936445", 0, '12', "'13-04-2025 00:02:37", 'Vé quý thường', np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, "'1736121104", "'50H20700", 'Làn 12', 'Vé quý thường', '2025-04-13 00:02:37', False],
+           ["'1736765135", "'50H20700", "'3416214B8817620004936445", 0, '8', "'13-04-2025 12:17:39", 'Vé quý thường', np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, "'1736765135", "'50H20700", 'Làn 8', 'Vé quý thường', '2025-04-13 12:17:39', False],
+           ["'1736769963", "'50H20700", "'3416214B8817620004936445", 0, '7', "'13-04-2025 12:21:20", 'Vé quý thường', np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, "'1736769963", "'50H20700", 'Làn 7', 'Vé quý thường', '2025-04-13 12:21:20', False],
+           ["'1736852606", "'50H20700", "'3416214B8817620004936445", 0, '12', "'13-04-2025 13:25:32", 'Vé quý thường', np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, "'1736852606", "'50H20700", 'Làn 12', 'Vé quý thường', '2025-04-13 13:25:32', False],
+           ["'1736921436", "'50H20700", "'3416214B8817620004936445", 0, '11', "'13-04-2025 14:07:22", 'Vé quý thường', np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, "'1736921436", "'50H20700", 'Làn 11', 'Vé quý thường', '2025-04-13 14:07:22', False],
+           ["'1736957673", "'50H20700", "'3416214B8817620004936445", 0, '12', "'13-04-2025 14:31:02", 'Vé quý thường', np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, "'1736957673", "'50H20700", 'Làn 12', 'Vé quý thường', '2025-04-13 14:31:02', False],
+           ["'1737043660", "'50H20700", "'3416214B8817620004936445", 0, '10', "'13-04-2025 15:16:20", 'Vé quý thường', np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, "'1737043660", "'50H20700", 'Làn 10', 'Vé quý thường', '2025-04-13 15:16:20', False],
+           ["'1737091024", "'50H20700", "'3416214B8817620004936445", 0, '12', "'13-04-2025 15:45:52", 'Vé quý thường', np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, "'1737091024", "'50H20700", 'Làn 12', 'Vé quý thường', '2025-04-13 15:45:52', False],
+           ["'1737356833", "'50H20700", "'3416214B8817620004936445", 0, '10', "'13-04-2025 18:33:11", 'Vé quý thường', np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, "'1737356833", "'50H20700", 'Làn 10', 'Vé quý thường', '2025-04-13 18:33:11', False],
+           ["'1737402928", "'50H20700", "'3416214B8817620004936445", 0, '12', "'13-04-2025 19:14:47", 'Vé quý thường', np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, "'1737402928", "'50H20700", 'Làn 12', 'Vé quý thường', '2025-04-13 19:14:47', False],
+           ["'1737468742", "'50H20700", "'3416214B8817620004936445", 0, '11', "'13-04-2025 20:13:13", 'Vé quý thường', np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, "'1737468742", "'50H20700", 'Làn 11', 'Vé quý thường', '2025-04-13 20:13:13', False],
+           ["'1737510726", "'50H20700", "'3416214B8817620004936445", 0, '12', "'13-04-2025 20:56:43", 'Vé quý thường', np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, "'1737510726", "'50H20700", 'Làn 12', 'Vé quý thường', '2025-04-13 20:56:43', False]]
+
+    df = pd.DataFrame(val, columns=head)
+    df['Thời gian chuẩn'] = pd.to_datetime(df['Thời gian chuẩn']) # Chuyển đổi sang datetime
+    bs ="'50H20700"
+    journey = Cars(df)
+    df_output = journey.get_transactions_info_df()
+    print(df_output[['Thời gian chuẩn', 'T/gian 2 lượt (phút)', 'Phí thu', 'BE_Tiền bao gồm thuế', 'Chênh lệch phí FE-BE']])

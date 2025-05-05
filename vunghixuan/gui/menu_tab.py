@@ -12,7 +12,7 @@ from PySide6.QtCore import Qt, QSize, QMimeData, QPoint
 from vunghixuan.account.roll_permissions.acount_table import UserPermissionsTable
 from vunghixuan.settings import TABS_INFO
 # from vunghixuan.account.register.user_controllers import UserController
-from vunghixuan.bot_station.check_tick_form import CheckTicketsForm
+from vunghixuan.bot_station.form_check_ticktes import CheckTicketsForm
 
 
 

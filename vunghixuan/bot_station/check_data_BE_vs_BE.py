@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QMessageBox
 )
 from vunghixuan.bot_station.table_data import TableData
-from vunghixuan.bot_station.file_list_form import FileListForm
+from vunghixuan.bot_station.form_get_file_list import FileListForm
 from PySide6.QtCore import Slot, QThread, Signal, QObject
 import pandas as pd
 import os
@@ -12,13 +12,17 @@ from vunghixuan.bot_station.load_gif_file import LoadingGifLabel
 import platform
 import subprocess
 import numpy as np
-from vunghixuan.bot_station.check_cost import CheckCost
+# from vunghixuan.bot_station.check_cost_remove import CheckCost
 # from vunghixuan.bot_station.to_excel import ExcelWriter
 import xlwings as xw
 
 from vunghixuan.bot_station.to_excel import ExcelWithTOC
-from vunghixuan.bot_station.nomal_fe_be import NoMalFEBE
-from vunghixuan.bot_station.doi_soat_chi_phi import DoiSoatPhi
+from vunghixuan.bot_station.standardize_fe_be import StandardizeData
+# from vunghixuan.bot_station.doi_soat_chi_phi_remove import DoiSoatPhi
+from vunghixuan.bot_station.classify_car_by_fee import CarByFee
+from vunghixuan.bot_station.car_journey_in_24h import Cars
+# from vunghixuan.bot_station.turn_and_journey_remove import TollDataProcessor
+
 
 class DataComparisonWorker(QObject):
     finished = Signal()
@@ -49,13 +53,14 @@ class DataComparisonWorker(QObject):
         dic[sheet_name] = df
         return dic
     
+    
     def run(self):
         data_for_excel = {}
         try:            
             "1. Chuẩn hoá file fe và be"
 
-            df_nomalizer = NoMalFEBE(self.fe_data, self.be_data)
-            fe_processed, be_processed, df_FE_BE = df_nomalizer.nomal_fe_be()
+            df_nomalizer = StandardizeData(self.fe_data, self.be_data)
+            fe_processed, be_processed, df_FE_BE = df_nomalizer.merge_df_be_and_be()
 
             # a. Đưa vào data_for_excel
             data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'FE', fe_processed)
@@ -66,51 +71,32 @@ class DataComparisonWorker(QObject):
             data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'DoanhThuVETC', self.revenue_data)
             data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'DoiSoatGDVETC', self.antagonize_data)
            
-            # c. Nhóm df_fe_be theo biển số chuẩn            
-            df_group_cars_time = df_nomalizer.group_cars_and_time_from_df_FE_BE(df_FE_BE)            
-            
-            # Thêm dòng cuối cho df_fe_be
-            df_group_cars_time = df_nomalizer.add_summary_columns(df_group_cars_time)
+            # c. Nhóm df_fe_be chuẩn hoá: Biển số, loại vé, thời gian và gộp biển số
+            df_group_cars_time = df_nomalizer.standarize_fe_be(df_FE_BE.copy())           
+            # df_group_cars_time = df_nomalizer.group_cars_from_df_FE_BE(df_FE_BE.copy())            
             data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'FE-BE(Nhóm xe)', df_group_cars_time)
-
-            # In ra list hỏi Chat
-            # print([df_group_cars_time.columns.tolist()] + df_group_cars_time.values.tolist())
-
             
-            # '2. Lấy danh sách xe ưu tiên và danh sách trả phí'
-            # doi_soat_cp = DoiSoatPhi()
-            # df_ko_thu_phi, df_tra_phi = doi_soat_cp.tach_nhom_xe_ko_thu_phi(df_group_cars_time.copy())
-            # data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'Xe-KhongThuPhi', df_ko_thu_phi)
-            # data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'Xe-TraPhi', df_tra_phi)
+           
 
-            # '3. Nhóm xe có chênh lệch phí do anten đọc nhiều lần'
-            # df_doi_soat_tra_phi = doi_soat_cp.kiem_tra_doc_nhieu_luot(df_tra_phi.copy())
-            # data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'NghiVan-DocNhieuLan', df_doi_soat_tra_phi)
-
-            # '4. Nhóm xe có chênh lệch phí do phí nguội'
-            # df_phi_nguoi = doi_soat_cp.kiem_tra_thu_phi_nguoi(df_tra_phi.copy())
-            # data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'NghiVan-PhiNguoi', df_phi_nguoi)
-
-            # '5. Nhóm xe có chênh lệch phí fe_co_be_khong'
-            # df_fe_co_be_khong = doi_soat_cp.kiem_tra_fe_co_be_khong(df_tra_phi.copy())
-            # data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'FE-co-BE_khong', df_fe_co_be_khong)
-
-            # '4. Nhóm xe có chênh lệch phí do phí nguội'
-            # df_phithu_be_khac_fe = doi_soat_cp.kiem_tra_chenh_lech_phi(df_tra_phi.copy())
-            # data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'PhiThu-KhacNhau', df_phithu_be_khac_fe)
+            "2. Tách xe không trả phí và xe trả phí"
+            car_by_fee = CarByFee() #Phân loại xe theo không thu và trả phí qua trạm
+            df_xe_khong_tra_phi, df_xe_tra_phi = car_by_fee.split_group_cars_not_fee_and_has_fee(df_group_cars_time)
             
-            # "4. Báo cáo tổng hợp đối soát phí"
-            # df_bao_cao_doi_soat = doi_soat_cp.doi_soat_phi(df_group_cars_time)
-            # data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'BaoCaoDoiSoat', df_bao_cao_doi_soat)
+            data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'Xe-KhongTraPhi', df_xe_khong_tra_phi.copy())
+            data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'Xe-TraPhi', df_xe_tra_phi.copy())           
 
-            '2. Kết quả đối soát'
-            doi_soat_cp = DoiSoatPhi()
-            # df_kq_VuNghiXuan = doi_soat_cp.doi_soat(df_group_cars_time.copy())
-            # data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'DoiSoat-VuNghiXuan', df_kq_VuNghiXuan)
+            # dic_report = car_by_fee.doi_soat_va_phan_loai(df_group_cars_time.copy())
+            # data_for_excel.update(dic_report)
             
-            '3. Xuất các sheets thống kê báo cáo'
-            dic_report  = doi_soat_cp.doi_soat_va_phan_loai(df_group_cars_time.copy())
-            data_for_excel.update(dic_report)
+            '3. Phân tích hành trình 1 xe trong dự án, tìm ra các chênh lệch'
+            # 3.1 Khởi tạo nhiều hành trình 24h cho nhiều tất cả các loại xe vào dự án trong 24 h
+            cars_24h = Cars(df_has_fee = df_xe_tra_phi.copy())
+            df_chk_fee = cars_24h.get_transactions_info_df()
+            data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'DoiSoat-XeTraPhi', df_chk_fee) 
+
+            # '4. Tổng đói soát'
+            # df_report = TollDataProcessor(df_xe_tra_phi.copy()).get_simplified_transactions()
+            # data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'BaoCao_TomTat', df_report) 
 
             " 1234. Ghi dữ liệu ra file Excel"
             self.to_excel(self.output_dir, data_for_excel)
