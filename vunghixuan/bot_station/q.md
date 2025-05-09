@@ -1,3 +1,155 @@
+Sửa code hàm _count_valid_trips tính chưa đúng lượt đi:
+Mô tả phương án thu phí theo self.mapping_lane cho một lượt đi (vào và ra dự án):
+
+1. Lượt đi cho Xe khởi hành từ bên ngoài đi vào dự án :
+
+Giao dịch ở làn vào đầu tiên sẽ bị thu phí.'Lỗi Antent'==True
+Các giao dịch tiếp theo, nếu cột 'Lỗi Antent'==False và thuộc một trong các làn ra của dự án  kết thúc 1 lượt đi phù hợp. Lượt ra là miễn phí nên lượt ra tính phí thì xem lỗi FE hay BE.
+
+2. Lượt đi cho Xe khởi hành từ bên trong ra dự án (dân sinh):
+
+Giao dịch ở làn ra đầu tiên sẽ bị thu phí. Điều này áp dụng cho cư dân sống trong khu vực dự án, có thể có hành trình khởi hành khác biệt.'Lỗi Antent'==True
+Nếu xe sau đó đi vào lại cùng trạm và đúng làn vào, thì giao dịch vào này vẫn được xem là lượt đi hợp lệ  và kết thúc lượt đi.
+Nếu xe đi vào ở một trạm khác sau khi đã ra, thì đây được xem là một lượt đi mới và sẽ tính phí cho lượt đi mới này.
+Yêu cầu về hàm và biến trong class Transaction:
+
+Thêm các hàm và biến trong class Transaction để hỗ trợ việc xác định lượt đi theo logic trên.
+Cần có các biến để theo dõi trạng thái lượt đi (ví dụ: đã vào, đã ra, lượt đi thứ mấy).
+Cần có thông tin về phí FE và BE để so sánh.
+Cần có cơ chế để xác định và đánh dấu các trường hợp lỗi quét trùng Anten.
+Yêu cầu về output all_transactions_data:
+
+Bạn muốn xuất ra DataFrame all_transactions_data (từ get_transactions_info_df của class Cars).
+DataFrame này cần bao gồm các cột bạn đã kiểm tra cho lỗi Anten (ví dụ: Lỗi Antent, T/gian 2 lượt (phút), Nghi vấn lỗi Antent).
+Đặc biệt, bạn chỉ muốn xuất ra 2 cột sau:
+Mô tả hành trình:
+Thông tin về lượt đi thứ mấy.
+Trạng thái ra/vào và trạm (làn nào).
+Nếu xe chỉ có giao dịch vào mà chưa có ra, cần ghi chú "xe chưa quay đầu". Ngược lại (chỉ có ra mà chưa vào), có thể ghi chú "xe đã ra mà chưa xác định điểm vào".
+Các phần còn lại và ccột còn lại giữ nguyên
+
+def _analyze_trips(self):
+        """Phân tích các giao dịch để xác định lượt đi."""
+        current_trip_id = None
+        previous_transaction = None
+        trip_index = 0 # Số lượt đi
+        entry_transaction = None # Lượt vào
+
+        for i, trans in enumerate(self.transactions):
+            if trans.fix_antent:
+                continue
+
+            is_free_ticket = 'miễn phí' in str(trans.standard_ticket_type).lower()
+            is_round_trip_ticket = 'quay đầu' in str(trans.standard_ticket_type).lower()
+
+            if is_round_trip_ticket and current_trip_id is not None:
+                # Giao dịch quay đầu kết thúc lượt hiện tại
+                trans.trip_id = current_trip_id
+                trans.trip_description = f"Lượt {trip_index}: Quay đầu tại trạm {trans.station} (làn {trans.lane}), vé '{trans.standard_ticket_type}'"
+                trans.has_matching_exit = True
+                if entry_transaction:
+                    entry_transaction.has_matching_exit = True
+                trans.fee_status = 'Quay đầu - Miễn phí'
+                current_trip_id = None
+                entry_transaction = None
+            elif is_free_ticket:
+                trans.fee_status = 'Vé miễn phí'
+                if trans.is_entry and current_trip_id is None:
+                    trip_index += 1
+                    current_trip_id = str(uuid.uuid4())
+                    trans.trip_id = current_trip_id
+                    trans.is_first_transaction_in_trip = True
+                    trans.trip_description = f"Lượt {trip_index}: Vào trạm {trans.station} (làn {trans.lane}), vé '{trans.standard_ticket_type}'"
+                    entry_transaction = trans
+                elif trans.is_exit and current_trip_id is not None and entry_transaction is not None and trans.station == entry_transaction.station:
+                    trans.trip_id = current_trip_id
+                    trans.trip_description = f"Lượt {trip_index}: Ra trạm {trans.station} (làn {trans.lane}), vé '{trans.standard_ticket_type}'"
+                    trans.has_matching_exit = True
+                    entry_transaction.has_matching_exit = True
+                    current_trip_id = None
+                    entry_transaction = None
+                elif trans.is_entry and current_trip_id is None:
+                    # Nếu là vé miễn phí và là giao dịch vào đầu tiên
+                    trip_index += 1
+                    current_trip_id = str(uuid.uuid4())
+                    trans.trip_id = current_trip_id
+                    trans.is_first_transaction_in_trip = True
+                    trans.trip_description = f"Lượt {trip_index}: Vào trạm {trans.station} (làn {trans.lane}), vé '{trans.standard_ticket_type}'"
+                    entry_transaction = trans
+            elif trans.is_entry and trans.is_chargeable and current_trip_id is None:
+                trip_index += 1
+                current_trip_id = str(uuid.uuid4())
+                trans.trip_id = current_trip_id
+                trans.is_first_transaction_in_trip = True
+                trans.trip_description = f"Lượt {trip_index}: Vào trạm {trans.station} (làn {trans.lane}), phí FE={trans.fee_of_fe}"
+                entry_transaction = trans
+                trans.fee_status = self._check_fee_consistency(trans.fee_of_fe, trans.fee_of_be)
+            elif trans.is_exit and current_trip_id is not None and entry_transaction is not None and trans.station == entry_transaction.station:
+                trans.trip_id = current_trip_id
+                trans.trip_description = f"Lượt {trip_index}: Ra trạm {trans.station} (làn {trans.lane}), phí BE={trans.fee_of_be}"
+                trans.has_matching_exit = True
+                entry_transaction.has_matching_exit = True
+                trans.fee_status = self._check_fee_consistency(trans.fee_of_fe, trans.fee_of_be)
+                current_trip_id = None
+                entry_transaction = None
+            elif trans.is_entry and trans.is_chargeable and current_trip_id is not None and entry_transaction is None:
+                # Trường hợp vào tiếp mà chưa ra
+                trip_index += 1
+                current_trip_id = str(uuid.uuid4())
+                trans.trip_id = current_trip_id
+                trans.is_first_transaction_in_trip = True
+                trans.trip_description = f"Lượt {trip_index}: Vào trạm {trans.station} (làn {trans.lane}), phí FE={trans.fee_of_fe} (Vào khi chưa ra lượt trước?)"
+                entry_transaction = trans
+                trans.fee_status = self._check_fee_consistency(trans.fee_of_fe, trans.fee_of_be)
+            elif trans.is_exit and current_trip_id is None:
+                # Xe có thể bắt đầu từ làn ra (dân cư)
+                trip_index += 1
+                current_trip_id = str(uuid.uuid4())
+                trans.trip_id = current_trip_id
+                trans.trip_description = f"Lượt {trip_index}: Ra trạm {trans.station} (làn {trans.lane}), phí BE={trans.fee_of_be} (Xuất phát từ dự án?)"
+                trans.has_matching_exit = True
+                trans.fee_status = self._check_fee_consistency(trans.fee_of_fe, trans.fee_of_be)
+                current_trip_id = None
+
+            previous_transaction = trans
+
+        # Xử lý các giao dịch vào mà không có ra
+        for trans in self.transactions:
+            if trans.is_entry and trans.trip_id is not None and not trans.has_matching_exit and not trans.fix_antent:
+                trans.trip_description += " (Chưa có giao dịch ra)"
+
+    def _check_fee_consistency(self, fe_fee, be_fee):
+        """Kiểm tra sự nhất quán giữa phí FE và BE."""
+        if 'miễn phí' in str(self.journey['Loại vé chuẩn'].iloc[0]).lower() or 'quay đầu' in str(self.journey['Loại vé chuẩn'].iloc[0]).lower():
+            return 'Vé miễn phí/Quay đầu'
+        elif fe_fee > be_fee:
+            return f'FE lớn hơn BE ({fe_fee} > {be_fee})'
+        elif fe_fee < be_fee:
+            return f'FE nhỏ hơn BE ({fe_fee} < {be_fee})'
+        elif fe_fee == be_fee and fe_fee > 0:
+            return f'FE = BE = {fe_fee}'
+        elif fe_fee == 0 and be_fee == 0:
+            return 'Không thu phí'
+        elif fe_fee > 0 and be_fee == 0:
+            return f'Chỉ có FE = {fe_fee}'
+        elif fe_fee == 0 and be_fee > 0:
+            return f'Chỉ có BE = {be_fee}'
+        else:
+            return 'Không xác định'
+
+    def _count_valid_trips(self):
+        """Đếm số lượt đi hợp lệ (có cả vào và ra)."""
+        return sum(1 for trans in self.transactions if trans.is_exit and trans.has_matching_exit and not trans.fix_antent)
+
+
+
+
+    '-----------------------------------------------------------------------------'
+
+
+
+
+
 Tôi muốn viết hàm kiẻm tra 1 lượt vé đi xem phí thu của BE hay FE sai hay cả 2 đều đúng và xe có bao nhiêu lượt 1 ngày, với nội dung như sau:
 Phương án thu phí theo self.mapping_lane với 1 lượt đi bao gồm vào và ra dự án
 
@@ -347,3 +499,70 @@ if __name__ == '__main__':
     journey = Cars(df)
     df_output = journey.get_transactions_info_df()
     print(df_output[['Thời gian chuẩn', 'T/gian 2 lượt (phút)', 'Phí thu', 'BE_Tiền bao gồm thuế', 'Chênh lệch phí FE-BE']])
+
+
+
+    Ý tưởng như thế này nhé: 
+    Trong vòng lặp for :
+    
+        Bước 1: Sau khi kiểm tra nếu có lỗi antent, kiểm tra fe, be mà thu phí là sai, ghi chú cho cột Trạng thái phí, continoun đi tiếp
+
+        Bước 2: Nếu không có lỗi Antent: Tức là giao dịch này là giao dịch và làn này là làn khởi hành, is_depart = TRue, kiểm tra trạng thái BE, FE có thu phí không ghi vào cột trạng thái
+
+        Qua bước 1, bước 2: ta xác định được làn khởi hành mà không lỗi Antent, hai bước này không kiểm tra làn 7 vì nếu có làn 7 thì nó vẫn là làn khởi hành.
+        Bước 3: Vòng lặp đi tới dòng giao dịch tiếp, kiểm tra làn 7 có hay không?
+            - Trường hợp có làn 7:
+                + Nếu là giao dịch cuối: Thì xác định làn 7 là làn kết thúc hành trình, ghi vào hành trình, kiểm tra trạng thái phí (nếu thu phí là sai)
+                + Nếu không phải là dòng cuối cùng của giao dịch này, thì tiếp tục đi tìm làn kết thúc hành trình các giao dịch tiếp theo, với điều kiện:
+                    * Nếu các dòng cuối tìm ra làn kết thúc hành trình thì làn 7 trên là làn kiểm soát, quay lại ghi vào mô tả hành trình và kiểm tra nếu có tính phí là sai.
+                    *Nếu không tìm thấy làn kết thúc hành trình, có các lý do sau:
+                        Mày mô tả thêm các trường hợp này rồi bàn tiếp
+
+
+
+
+
+                    <!-- * Nếu dòng tiếp theo bị lỗi Anten thì và là dòng cuối thì quay lại giao dịch tại dòng 7: kết luận là làn kết thúc hành trình, ghi vào cột 'Mô tả hành trình', kiểm tra trạng thái BE, FE có thu phí không ghi vào cột trạng thái, nếu có thu phí là sai
+
+                    * Nếu dòng tiếp theo không bị lỗi Anten thì kiểm tra có phải là làn kết thúc hành trình hay không: ghi vào cột cột 'Mô tả hành trình' là làn kiểm soát, kiểm tra trạng thái BE, FE có thu phí không ghi vào cột trạng thái, nếu có thu phí là sai. Continoun 
+                + Nếu  -->
+
+
+Quy tắc xác định lượt đi và trạng thái phí:
+
+1. Lượt đi một chiều (từ ngoài vào):
+
+Bắt đầu: Giao dịch đầu tiên ghi nhận được phải thỏa mãn đồng thời hai điều kiện: 'Lỗi Antent' == False' và làn giao dịch là làn 'vào' (theo định nghĩa trong self.mapping_lane). Giao dịch này được xem là điểm khởi đầu của lượt đi.
+Kết thúc: Giao dịch tiếp theo ghi nhận được phải thỏa mãn đồng thời hai điều kiện: 'Lỗi Antent' == False' và làn giao dịch là làn 'ra' (theo định nghĩa trong self.mapping_lane).
+Kiểm tra đặc biệt cho làn 7: Nếu làn kết thúc là làn số 7, cần kiểm tra các giao dịch tiếp theo (bên dưới) để xác định giao dịch kết thúc lượt đi chính xác hơn dựa trên loại vé chuẩn:
+Nếu tồn tại giao dịch ở làn 7 có cột loại vé chuẩn là "Miễn phí liên trạm" và phí thu bằng 0, thì giao dịch này được xem là làn kiểm soát, chưa phải là giao dịch kết thúc cuối cùng của lượt đi. Cần tiếp tục tìm giao dịch ra hợp lệ sau đó.
+Nếu tồn tại giao dịch ở làn 7 có cột loại vé chuẩn là 'Miễn phí quay đầu', thì giao dịch này chính là giao dịch kết thúc của lượt đi.
+Nếu không có các trường hợp đặc biệt trên, giao dịch ra đầu tiên ở làn 'ra' (bao gồm cả làn 7 nếu không thuộc trường hợp "Miễn phí liên trạm") được xem là kết thúc lượt đi.
+Trạng thái phí:
+Nếu giao dịch khởi hành (làn vào) không bị tính phí, hãy kiểm tra xem phí thu BE hoặc FE có bị thiếu hay không.
+Nếu giao dịch kết thúc (làn ra) bị tính phí, hãy kiểm tra xem phí thu BE hoặc FE có bị tính thừa hay không.
+2. Lượt đi dân sinh (từ trong ra, quay đầu tại trạm):
+
+Bắt đầu: Giao dịch ra đầu tiên ghi nhận được phải thỏa mãn đồng thời hai điều kiện: 'Lỗi Antent' == False' và làn giao dịch là làn 'ra' (theo định nghĩa trong self.mapping_lane). Giao dịch này được xem là điểm khởi đầu của lượt đi.
+Kết thúc: Giao dịch vào sau đó phải thỏa mãn các điều kiện sau:
+Xảy ra tại cùng trạm với giao dịch ra trước đó (tên trạm được xác định từ cột 'Làn chuẩn' thông qua self.mapping_lane).
+Sử dụng đúng làn vào (được định nghĩa là 'vào' cho trạm đó trong self.mapping_lane).
+Có 'Lỗi Antent' == False'.
+Điều kiện hợp lệ: Cả giao dịch ra ban đầu và giao dịch vào sau đó đều phải có 'Lỗi Antent' == False' để lượt đi này được xác định là hợp lệ.
+Trạng thái phí:
+Nếu giao dịch khởi hành (làn ra đầu tiên) không bị tính phí, hãy kiểm tra xem phí thu BE hoặc FE có bị thiếu hay không.
+Nếu giao dịch kết thúc (làn vào sau đó) bị tính phí, hãy kiểm tra xem phí thu BE hoặc FE có bị tính thừa hay không.
+3. Lượt đi cơ bản (vào và ra):
+
+Bắt đầu: Giao dịch vào đầu tiên ghi nhận được phải thỏa mãn đồng thời hai điều kiện: 'Lỗi Antent' == False' và làn giao dịch là làn 'vào' (theo định nghĩa trong self.mapping_lane).
+Kết thúc: Giao dịch ra tiếp theo ghi nhận được phải thỏa mãn đồng thời hai điều kiện: 'Lỗi Antent' == False' và làn giao dịch là làn 'ra' (theo định nghĩa trong self.mapping_lane).
+Kiểm tra đặc biệt cho làn 7: Tương tự như lượt đi một chiều, nếu làn kết thúc là làn số 7, cần kiểm tra các giao dịch tiếp theo (bên dưới) dựa trên loại vé chuẩn ("Miễn phí liên trạm" và 'Miễn phí quay đầu') để xác định giao dịch kết thúc chính xác.
+Trạng thái phí:
+Nếu giao dịch khởi hành (làn vào) không bị tính phí, hãy kiểm tra xem phí thu BE hoặc FE có bị thiếu hay không.
+Nếu giao dịch kết thúc (làn ra) bị tính phí, hãy kiểm tra xem phí thu BE hoặc FE có bị tính thừa hay không.
+4. Trường hợp xe chưa quay đầu:
+
+Nếu trong một khoảng thời gian nhất định, hệ thống chỉ ghi nhận được giao dịch vào thỏa mãn điều kiện 'Lỗi Antent' == False' và là làn 'vào' (theo self.mapping_lane) cho một xe, mà không có giao dịch ra nào thỏa mãn điều kiện 'Lỗi Antent' == False' và là làn 'ra' (theo self.mapping_lane) cho cùng xe đó, thì trạng thái sẽ được ghi nhận là "xe chưa quay đầu".
+5. Trường hợp xe đã ra mà chưa xác định điểm vào:
+
+Nếu trong một khoảng thời gian nhất định, hệ thống chỉ ghi nhận được giao dịch ra thỏa mãn điều kiện 'Lỗi Antent' == False' và là làn 'ra' (theo self.mapping_lane) cho một xe, mà không có giao dịch vào nào thỏa mãn điều kiện 'Lỗi Antent' == False' và là làn 'vào' (theo self.mapping_lane) cho cùng xe đó trước đó, thì trạng thái sẽ được ghi nhận là "xe đã ra mà chưa xác định điểm vào".

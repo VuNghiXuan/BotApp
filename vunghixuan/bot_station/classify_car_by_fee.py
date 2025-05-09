@@ -92,7 +92,7 @@ class CarByFee:
         """
         try:
             df = df.copy()
-            cac_loai_ve_mien_phi = ['UT toàn quốc', 'Miễn giảm 100%', 'Vé quý thường', 'Vé tháng thường', 'Vé lượt miễn phí', 'Vé quay đầu']
+            cac_loai_ve_mien_phi = ['UT toàn quốc', 'Miễn giảm 100%', 'Vé quý thường', 'Vé tháng thường', 'Miễn giảm ĐP'] #, 'Vé lượt miễn phí', 'Vé quay đầu'
 
             # Tìm các biển số xe có ít nhất một giao dịch thuộc loại vé miễn phí/ưu tiên
             bien_so_khong_phi_theo_ve = df[df['Loại vé chuẩn'].isin(cac_loai_ve_mien_phi)]['Biển số chuẩn'].unique()

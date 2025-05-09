@@ -1,12 +1,9 @@
 import pandas as pd
 import numpy as np
+import uuid
 from vunghixuan.bot_station.transaction_info import Transaction
 # from transaction_info import Transaction
 
-
-
-import pandas as pd
-import numpy as np
 
 
 class Car:
@@ -21,12 +18,15 @@ class Car:
             self.transactions = []
             self.create_transactions()
             self._update_time_diff_column_doubt_fix_antent() # Cập nhật cột sau khi tạo transactions
+            self._analyze_trips() # Phân tích lượt đi
+            self.trip_count = self._count_valid_trips() # Đếm số lượt đi hợp lệ
         except Exception as e:
             print(f'Lỗi hàm __init__ trong class Car: {e}')
             self.name = None
             self.journey = pd.DataFrame()
             self.total_journey = 0
             self.transactions = []
+            self.trip_count = 0
 
     def create_transactions(self):
         """
@@ -43,8 +43,6 @@ class Car:
             print(f'Lỗi hàm create_transactions trong class Car: {e}')
             self.transactions = []
 
-    
-
     def _update_time_diff_column_doubt_fix_antent(self):
         """
         Cập nhật cột 'T/gian 2 lượt (phút)' của DataFrame.
@@ -52,7 +50,7 @@ class Car:
         try:
             time_diff_values = [tran.time_diff_to_previous for tran in self.transactions]
             # self.journey['T/gian 2 lượt (phút)'] = time_diff_values
-            # Kiểm tra có chênh lệch phí 
+            # Kiểm tra có chênh lệch phí
             ""
         except Exception as e:
             print(f'Lỗi hàm _update_time_diff_column_doubt_fix_antent trong class Car: {e}')
@@ -68,6 +66,134 @@ class Car:
         except Exception as e:
             print(f'Lỗi hàm get_journey_df trong class Car: {e}')
             return pd.DataFrame()
+
+    def _check_previous_paid_transaction(self, current_transaction_index, time_window_minutes=30):
+        """
+        Kiểm tra xem trong khoảng thời gian trước giao dịch hiện tại có giao dịch thu phí nào ở làn vào khác không.
+        """
+        current_time = self.transactions[current_transaction_index].time
+        for i in range(current_transaction_index - 1, -1, -1):
+            previous_tran = self.transactions[i]
+            time_diff = (current_time - previous_tran.time).total_seconds() / 60
+            if time_diff > time_window_minutes:
+                break
+            if previous_tran.is_chargeable and previous_tran.lane_type == 'vào' and previous_tran.lane != 'Làn 7':
+                return True
+        return False
+    
+    def _analyze_trips(self):
+        """Phân tích các giao dịch để xác định lượt đi."""
+        current_trip_id = None
+        previous_transaction = None
+        trip_index = 0 # Số lượt đi
+        entry_transaction = None # Lượt vào
+
+        for i, trans in enumerate(self.transactions):
+            if trans.fix_antent:
+                continue
+
+            is_free_ticket = 'miễn phí' in str(trans.standard_ticket_type).lower()
+            is_round_trip_ticket = 'quay đầu' in str(trans.standard_ticket_type).lower()
+
+            if is_round_trip_ticket and current_trip_id is not None:
+                # Giao dịch quay đầu kết thúc lượt hiện tại
+                trans.trip_id = current_trip_id
+                trans.trip_description = f"Lượt {trip_index}: Quay đầu tại trạm {trans.station} (làn {trans.lane}), vé '{trans.standard_ticket_type}'"
+                trans.has_matching_exit = True
+                if entry_transaction:
+                    entry_transaction.has_matching_exit = True
+                trans.fee_status = 'Quay đầu - Miễn phí'
+                current_trip_id = None
+                entry_transaction = None
+            elif is_free_ticket:
+                trans.fee_status = 'Vé miễn phí'
+                if trans.is_entry and current_trip_id is None:
+                    trip_index += 1
+                    current_trip_id = str(uuid.uuid4())
+                    trans.trip_id = current_trip_id
+                    trans.is_first_transaction_in_trip = True
+                    trans.trip_description = f"Lượt {trip_index}: Vào trạm {trans.station} (làn {trans.lane}), vé '{trans.standard_ticket_type}'"
+                    entry_transaction = trans
+                elif trans.is_exit and current_trip_id is not None and entry_transaction is not None and trans.station == entry_transaction.station:
+                    trans.trip_id = current_trip_id
+                    trans.trip_description = f"Lượt {trip_index}: Ra trạm {trans.station} (làn {trans.lane}), vé '{trans.standard_ticket_type}'"
+                    trans.has_matching_exit = True
+                    entry_transaction.has_matching_exit = True
+                    current_trip_id = None
+                    entry_transaction = None
+                elif trans.is_entry and current_trip_id is None:
+                    # Nếu là vé miễn phí và là giao dịch vào đầu tiên
+                    trip_index += 1
+                    current_trip_id = str(uuid.uuid4())
+                    trans.trip_id = current_trip_id
+                    trans.is_first_transaction_in_trip = True
+                    trans.trip_description = f"Lượt {trip_index}: Vào trạm {trans.station} (làn {trans.lane}), vé '{trans.standard_ticket_type}'"
+                    entry_transaction = trans
+            elif trans.is_entry and trans.is_chargeable and current_trip_id is None:
+                trip_index += 1
+                current_trip_id = str(uuid.uuid4())
+                trans.trip_id = current_trip_id
+                trans.is_first_transaction_in_trip = True
+                trans.trip_description = f"Lượt {trip_index}: Vào trạm {trans.station} (làn {trans.lane}), phí FE={trans.fee_of_fe}"
+                entry_transaction = trans
+                trans.fee_status = self._check_fee_consistency(trans.fee_of_fe, trans.fee_of_be)
+            elif trans.is_exit and current_trip_id is not None and entry_transaction is not None and trans.station == entry_transaction.station:
+                trans.trip_id = current_trip_id
+                trans.trip_description = f"Lượt {trip_index}: Ra trạm {trans.station} (làn {trans.lane}), phí BE={trans.fee_of_be}"
+                trans.has_matching_exit = True
+                entry_transaction.has_matching_exit = True
+                trans.fee_status = self._check_fee_consistency(trans.fee_of_fe, trans.fee_of_be)
+                current_trip_id = None
+                entry_transaction = None
+            elif trans.is_entry and trans.is_chargeable and current_trip_id is not None and entry_transaction is None:
+                # Trường hợp vào tiếp mà chưa ra
+                trip_index += 1
+                current_trip_id = str(uuid.uuid4())
+                trans.trip_id = current_trip_id
+                trans.is_first_transaction_in_trip = True
+                trans.trip_description = f"Lượt {trip_index}: Vào trạm {trans.station} (làn {trans.lane}), phí FE={trans.fee_of_fe} (Vào khi chưa ra lượt trước?)"
+                entry_transaction = trans
+                trans.fee_status = self._check_fee_consistency(trans.fee_of_fe, trans.fee_of_be)
+            elif trans.is_exit and current_trip_id is None:
+                # Xe có thể bắt đầu từ làn ra (dân cư)
+                trip_index += 1
+                current_trip_id = str(uuid.uuid4())
+                trans.trip_id = current_trip_id
+                trans.trip_description = f"Lượt {trip_index}: Ra trạm {trans.station} (làn {trans.lane}), phí BE={trans.fee_of_be} (Xuất phát từ dự án?)"
+                trans.has_matching_exit = True
+                trans.fee_status = self._check_fee_consistency(trans.fee_of_fe, trans.fee_of_be)
+                current_trip_id = None
+
+            previous_transaction = trans
+
+        # Xử lý các giao dịch vào mà không có ra
+        for trans in self.transactions:
+            if trans.is_entry and trans.trip_id is not None and not trans.has_matching_exit and not trans.fix_antent:
+                trans.trip_description += " (Chưa có giao dịch ra)"
+        
+
+    def _check_fee_consistency(self, fe_fee, be_fee):
+        """Kiểm tra sự nhất quán giữa phí FE và BE."""
+        if 'miễn phí' in str(self.journey['Loại vé chuẩn'].iloc[0]).lower() or 'quay đầu' in str(self.journey['Loại vé chuẩn'].iloc[0]).lower():
+            return 'Vé miễn phí/Quay đầu'
+        elif fe_fee > be_fee:
+            return f'FE lớn hơn BE ({fe_fee} > {be_fee})'
+        elif fe_fee < be_fee:
+            return f'FE nhỏ hơn BE ({fe_fee} < {be_fee})'
+        elif fe_fee == be_fee and fe_fee > 0:
+            return f'FE = BE = {fe_fee}'
+        elif fe_fee == 0 and be_fee == 0:
+            return 'Không thu phí'
+        elif fe_fee > 0 and be_fee == 0:
+            return f'Chỉ có FE = {fe_fee}'
+        elif fe_fee == 0 and be_fee > 0:
+            return f'Chỉ có BE = {be_fee}'
+        else:
+            return 'Không xác định'
+
+    def _count_valid_trips(self):
+        """Đếm số lượt đi hợp lệ (có cả vào và ra)."""
+        return sum(1 for trans in self.transactions if trans.is_exit and trans.has_matching_exit and not trans.fix_antent)
 
 class Cars():
     def __init__(self, df_has_fee):
@@ -93,60 +219,6 @@ class Cars():
             print(f'Lỗi hàm create_car_journeys trong class Cars: {e}')
             self.car_journeys = {}
 
-    def check_turn(self):
-        """
-        Kiểm tra lượt vé đi, xác định trạng thái phí thu (BE/FE),
-        và đếm số lượt đi trong ngày cho mỗi xe.
-        """
-        ket_qua_kiem_tra = {}
-        so_luot_di_ngay = {}
-
-        for car_license, car_obj in self.car_journeys.items():
-            transactions = car_obj.transactions
-            num_transactions = len(transactions)
-            luot_di = []
-            trang_thai_phi = []
-
-            if num_transactions > 0:
-                # Phân tích lượt đi và trạng thái phí
-                i = 0
-                while i < num_transactions:
-                    tran1 = transactions[i]
-                    i += 1
-                    if i < num_transactions:
-                        tran2 = transactions[i]
-
-                        # Kiểm tra lượt đi hợp lệ (cùng trạm, vào-ra hoặc ra-vào, thời gian hợp lý)
-                        if (tran1.station == tran2.station and
-                            ((tran1.is_in_lane and tran2.is_out_lane) or (tran1.is_out_lane and tran2.is_in_lane)) and
-                            (tran2.time - tran1.time).total_seconds() / 60 > tran1.tran_reasonable_time_minutes and
-                            not tran1.fix_antent and not tran2.fix_antent):
-                            luot_di.append((tran1.info['Mã giao dịch'], tran2.info['Mã giao dịch']))
-                            i += 1 # Bỏ qua giao dịch thứ hai của lượt đi
-                        else:
-                            luot_di.append((tran1.info['Mã giao dịch'], None)) # Giao dịch đơn lẻ hoặc không tạo thành lượt hợp lệ
-
-                    else:
-                        luot_di.append((tran1.info['Mã giao dịch'], None)) # Giao dịch cuối cùng
-
-                # Xác định trạng thái phí cho từng giao dịch
-                for tran in transactions:
-                    if tran.fee_of_be == tran.fee_of_fe:
-                        trang_thai = "Cả hai đúng"
-                    elif tran.fee_of_be != 0 and tran.fee_of_fe == 0:
-                        trang_thai = "BE đúng, FE sai"
-                    elif tran.fee_of_be == 0 and tran.fee_of_fe != 0:
-                        trang_thai = "FE đúng, BE sai"
-                    else:
-                        trang_thai = "Cả hai sai"
-                    trang_thai_phi.append(trang_thai)
-
-                ket_qua_kiem_tra[car_license] = list(zip([tran.info['Mã giao dịch'] for tran in transactions], trang_thai_phi, luot_di))
-                so_luot_di_ngay[car_license] = len([ld for ld in luot_di if ld[1] is not None])
-
-        return ket_qua_kiem_tra, so_luot_di_ngay
-
-
     def get_all_journeys_df(self):
         """
         Trả về một DataFrame chứa thông tin của tất cả các hành trình xe,
@@ -171,23 +243,30 @@ class Cars():
         """
         Trả về DataFrame chứa thông tin giao dịch từ tất cả các xe,
         bao gồm tất cả các cột ban đầu của Transaction và thêm
-        'T/gian 2 lượt (phút)' và 'Chênh lệch phí FE-BE'.
+        các thông tin kiểm tra lỗi và lượt đi.
         """
         try:
             all_transactions_data = []
             for car_license, car_obj in self.car_journeys.items():
                 for trans in car_obj.transactions:
-                    transaction_info = trans.info.copy()  # Lấy bản sao dictionary từ thuộc tính 'info' của Transaction
-                    
+                    transaction_info = trans.info.copy()
+
                     transaction_info['Chênh lệch phí FE-BE'] = trans.diff_fee
                     # 1. Lỗi antent
                     transaction_info['Lỗi Antent'] = trans.fix_antent
                     transaction_info['T/gian 2 lượt (phút)'] = trans.time_diff_to_previous
                     transaction_info['Nghi vấn lỗi Antent'] = trans.antent_doubt
 
-                    # 2. Lỗi giao địch chỉ 1 phía BE hoặc FE
+                    # 2. Lỗi giao dịch chỉ 1 phía BE hoặc FE
                     transaction_info['Giao dịch có FE hoặc BE'] = trans.tran_only_fe_not_be
                     transaction_info['Nghi vấn giao dịch 1 phía'] = trans.fe_or_be_doubt
+
+                    # 3. Thông tin lượt đi
+                    transaction_info['Mô tả hành trình'] = trans.trip_description
+                    # transaction_info['ID Lượt đi'] = trans.trip_id
+                    transaction_info['Trạng thái phí'] = trans.fee_status
+                    transaction_info['Là giao dịch đầu lượt'] = trans.is_first_transaction_in_trip
+                    transaction_info['Đã có giao dịch ra'] = trans.has_matching_exit
 
                     all_transactions_data.append(transaction_info)
             return pd.DataFrame(all_transactions_data)
@@ -198,22 +277,12 @@ class Cars():
 
 if __name__ == '__main__':
     head = ['Mã giao dịch', 'Số xe đăng ký', 'Mã thẻ', 'Phí thu', 'Làn', 'Ngày giờ', 'Loại vé', 'BE_Biển số xe', 'BE_Số etag', 'BE_Loại giá vé', 'BE_Tiền bao gồm thuế', 'BE_Thời gian qua trạm', 'BE_Làn', 'Mã giao dịch chuẩn', 'Biển số chuẩn', 'Làn chuẩn', 'Loại vé chuẩn', 'Thời gian chuẩn', 'Xe không trả phí']
-    val = [["'1736121104", "'50H20700", "'3416214B8817620004936445", 0, '12', "'13-04-2025 00:02:37", 'Vé quý thường', np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, "'1736121104", "'50H20700", 'Làn 12', 'Vé quý thường', '2025-04-13 00:02:37', False],
-           ["'1736765135", "'50H20700", "'3416214B8817620004936445", 0, '8', "'13-04-2025 12:17:39", 'Vé quý thường', np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, "'1736765135", "'50H20700", 'Làn 8', 'Vé quý thường', '2025-04-13 12:17:39', False],
-           ["'1736769963", "'50H20700", "'3416214B8817620004936445", 0, '7', "'13-04-2025 12:21:20", 'Vé quý thường', np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, "'1736769963", "'50H20700", 'Làn 7', 'Vé quý thường', '2025-04-13 12:21:20', False],
-           ["'1736852606", "'50H20700", "'3416214B8817620004936445", 0, '12', "'13-04-2025 13:25:32", 'Vé quý thường', np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, "'1736852606", "'50H20700", 'Làn 12', 'Vé quý thường', '2025-04-13 13:25:32', False],
-           ["'1736921436", "'50H20700", "'3416214B8817620004936445", 0, '11', "'13-04-2025 14:07:22", 'Vé quý thường', np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, "'1736921436", "'50H20700", 'Làn 11', 'Vé quý thường', '2025-04-13 14:07:22', False],
-           ["'1736957673", "'50H20700", "'3416214B8817620004936445", 0, '12', "'13-04-2025 14:31:02", 'Vé quý thường', np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, "'1736957673", "'50H20700", 'Làn 12', 'Vé quý thường', '2025-04-13 14:31:02', False],
-           ["'1737043660", "'50H20700", "'3416214B8817620004936445", 0, '10', "'13-04-2025 15:16:20", 'Vé quý thường', np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, "'1737043660", "'50H20700", 'Làn 10', 'Vé quý thường', '2025-04-13 15:16:20', False],
-           ["'1737091024", "'50H20700", "'3416214B8817620004936445", 0, '12', "'13-04-2025 15:45:52", 'Vé quý thường', np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, "'1737091024", "'50H20700", 'Làn 12', 'Vé quý thường', '2025-04-13 15:45:52', False],
-           ["'1737356833", "'50H20700", "'3416214B8817620004936445", 0, '10', "'13-04-2025 18:33:11", 'Vé quý thường', np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, "'1737356833", "'50H20700", 'Làn 10', 'Vé quý thường', '2025-04-13 18:33:11', False],
-           ["'1737402928", "'50H20700", "'3416214B8817620004936445", 0, '12', "'13-04-2025 19:14:47", 'Vé quý thường', np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, "'1737402928", "'50H20700", 'Làn 12', 'Vé quý thường', '2025-04-13 19:14:47', False],
-           ["'1737468742", "'50H20700", "'3416214B8817620004936445", 0, '11', "'13-04-2025 20:13:13", 'Vé quý thường', np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, "'1737468742", "'50H20700", 'Làn 11', 'Vé quý thường', '2025-04-13 20:13:13', False],
-           ["'1737510726", "'50H20700", "'3416214B8817620004936445", 0, '12', "'13-04-2025 20:56:43", 'Vé quý thường', np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, "'1737510726", "'50H20700", 'Làn 12', 'Vé quý thường', '2025-04-13 20:56:43', False]]
-
-    df = pd.DataFrame(val, columns=head)
-    df['Thời gian chuẩn'] = pd.to_datetime(df['Thời gian chuẩn']) # Chuyển đổi sang datetime
-    bs ="'50H20700"
-    journey = Cars(df)
-    df_output = journey.get_transactions_info_df()
-    print(df_output[['Thời gian chuẩn', 'T/gian 2 lượt (phút)', 'Phí thu', 'BE_Tiền bao gồm thuế', 'Chênh lệch phí FE-BE']])
+    # val = [
+    #     ["'1736121104", "'50H20700", "'3416214B8817620004936445", 0, '10', "'13-04-2025 00:02:37", 'Vé quý thường', np.nan, np.nan, np.nan, 0, np.nan, np.nan, "'1736121104", "'50H20700", 'Làn 10', 'Vé lượt miễn phí', '2025-04-13 00:02:37', False], # Vào miễn phí
+    #     ["'1736765135", "'50H20700", "'3416214B8817620004936445", 0, '12', "'13-04-2025 12:17:39", 'Vé quý thường', np.nan, np.nan, np.nan, 0, np.nan, np.nan, "'1736765135", "'50H20700", 'Làn 12', 'Vé lượt miễn phí', '2025-04-13 12:17:39', False], # Ra miễn phí
+    #     ["'1736769963", "'50H20700", "'3416214B8817620004936445", 20000, '11', "'13-04-2025 12:21:20", 'Vé quý thường', np.nan, np.nan, np.nan, 20000, np.nan, np.nan, "'1736769963", "'50H20700", 'Làn 11', 'Vé quý thường', '2025-04-13 12:21:20', False], # Vào trả phí
+    #     ["'1736852606", "'50H20700", "'3416214B8817620004936445", 0, '12', "'13-04-2025 13:25:32", 'Vé quý thường', np.nan, np.nan, np.nan, 0, np.nan, np.nan, "'1736852606", "'50H20700", 'Làn 12', 'Vé quý thường', '2025-04-13 13:25:32', False], # Ra trả phí
+    #     ["'1736921436", "'50H20701", "'3416214B8817620004936447", 15000, '1', "'13-04-2025 14:07:22", 'Vé quý thường', np.nan, np.nan, np.nan, 15000, np.nan, np.nan, "'1736921436", "'50H20701", 'Làn 1', 'Vé quay đầu', '2025-04-13 14:07:22', False], # Vào quay đầu
+    #     ["'1736957673", "'50H20701", "'3416214B8817620004936447", 0, '3', "'13-04-2025 14:31:02", 'Vé quý thường', np.nan, np.nan, np.nan, 0, np.nan, np.nan, "'1736957673", "'50H20701", 'Làn 3', 'Vé quay đầu', '2025-04-13 14:31:02', False], # Ra quay đầu
+    #     ["'1737043660", "'50H20700", "'3416214B8817620004936445", 20000, '10', "'13-04-2025 15:16:20", 'Vé quý thường', np.nan, np.nan, np.nan, 20000, np.nan, np.nan, "'1737043660", "'50H20700", 'Làn 10', 'Vé quý thường', '2025-04-13 15:16:20', False], # Vào trả phí
+    #     ["'173

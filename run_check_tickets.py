@@ -56,4 +56,6 @@ if __name__ == '__main__':
     """
     # Build file ra exe: pyinstaller run_check_tickets.spec
 
+    # 15H07010 dòng 14
+
     
