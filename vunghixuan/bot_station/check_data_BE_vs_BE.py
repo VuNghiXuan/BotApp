@@ -89,22 +89,15 @@ class DataComparisonWorker(QObject):
             # data_for_excel.update(dic_report)
             
             '3. Phân tích hành trình 1 xe trong dự án, tìm ra các chênh lệch'
-            # 3.1 Khởi tạo nhiều hành trình 24h cho nhiều tất cả các loại xe vào dự án trong 24 h
-            # cars_24h = Cars(df_has_fee = df_xe_tra_phi.copy())
-            # df_chk_fee = cars_24h.get_transactions_info_df()
-            # data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'DoiSoat-XeTraPhi', df_chk_fee) 
+            # 3.1 Khởi tạo nhiều hành trình 24h cho nhiều tất cả các loại xe vào dự án trong 24 h            
 
-
-            # mapping_lane_config = {
-            #     'Đồng Khởi_2A': {'vào': ['Làn 10', 'Làn 11'], 'ra': ['Làn 12']},
-            #     'ĐT768_1A': {'vào': ['Làn 1', 'Làn 2'], 'ra': ['Làn 3', 'Làn 4']},
-            #     'ĐT768_3': {'vào': ['Làn 7', 'Làn 8', 'Làn 9'], 'ra': ['Làn 5', 'Làn 6']}
-            # }
             mapping_lane_config = {
                 '2A': {'vào': ['Làn 10', 'Làn 11'], 'ra': ['Làn 12']},
                 '1A': {'vào': ['Làn 1', 'Làn 2'], 'ra': ['Làn 3', 'Làn 4']},
-                '3&4': {'vào': ['Làn 7', 'Làn 8', 'Làn 9'], 'ra': ['Làn 5', 'Làn 6']}
+                '3A': {'vào': ['Làn 8', 'Làn 9'], 'ra': ['Làn 5', 'Làn 6']},
+                '3B': {'vào': ['Làn 7'], 'ra': []},
             }
+
             cars_24h = Cars(df_xe_tra_phi.copy(), mapping_lane_config)
             df_chk_fee = cars_24h.get_transactions_info_df()
             data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'DoiSoat-XeTraPhi', df_chk_fee) 
