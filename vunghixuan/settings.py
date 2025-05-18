@@ -68,14 +68,14 @@ PERMISSIONS = ['Thêm', 'Xoá', 'Sửa', 'Xem']
 
 # Hệ thống MainTab và SubTab
 TABS_INFO = {
+    "Đối soát vé BOT": {
+        "Đối soát files": get_resource_path(f'{STATIC_DIR_RELATIVE}/icon/icon_addNew.png'),
+        "Hướng dẫn": get_resource_path(f'{STATIC_DIR_RELATIVE}/icon/icons8-bookmark.gif'),
+    },
     "Hệ thống": {
         "Quản lý tài khoản": get_resource_path(f'{STATIC_DIR_RELATIVE}/icon/icon_user_64.png'),
         "Cài đặt": get_resource_path(f'{STATIC_DIR_RELATIVE}/icon/icon_sys.png'),
-        "Hướng dẫn": get_resource_path(f'{STATIC_DIR_RELATIVE}/icon/icons8-bookmark.gif'),
-    },
-    "Đối soát vé BOT": {
-        "Đối soát files": get_resource_path(f'{STATIC_DIR_RELATIVE}/icon/icons8-calculate-64.png'),
-        "Hướng dẫn": get_resource_path(f'{STATIC_DIR_RELATIVE}/icon/icons8-bookmark.gif'),
+        # "Hướng dẫn": get_resource_path(f'{STATIC_DIR_RELATIVE}/icon/icons8-bookmark.gif'),
     },
 }
 FILES_URL = os.path.abspath(".")  # Lưu file Excel trong thư mục chứa file .exe

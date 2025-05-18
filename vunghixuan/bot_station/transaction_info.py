@@ -34,11 +34,13 @@ class Transaction:
         self.is_first_transaction_in_trip = False # Là giao dịch đầu tiên của lượt đi
         self.trip_description = ''      # Mô tả hành trình của lượt đi
         self.has_matching_exit = False  # Đã có giao dịch ra tương ứng
-        self.fee_status = 'Chưa xác định' # Trạng thái phí BE/FE
+        self.fee_status = '' # Trạng thái phí BE/FE
         self.is_round_trip = False      # Xác định là giao dịch quay đầu
         self.fix_antent = False         # Xác định giao dịch bị lỗi antent
         self.antent_doubt = ''          # Nghi vấn lỗi antent
-        self.is_part_of_short_trip_89_to_7 = False # Khắc phục lỗi xe đi vào làn 8,9 đi ra làn 7 bị lỗi Antent
+        self.is_trip_end = False        # Đánh dấu nếu là giao dịch kết thúc lượt đi
+        self.is_part_of_short_trip_89_to_7 = False # Biến đánh dấu giao dịch thuộc lượt đi 8/9 -> 7
+        
 
         # Phân tích biến đổi kiểu dữ liệu
         self._parse_transaction(transaction)
@@ -93,8 +95,7 @@ class Transaction:
                 return None
             lane_str = str(lane).strip()
             for station, lane_info in self.mapping_lane.items():
-                if lane_str in [l.strip() for l in lane_info.get('vào', [])] or \
-                   lane_str in [l.strip() for l in lane_info.get('ra', [])]:
+                if lane_str in [l.strip() for l in lane_info.get('vào', [])] or  lane_str in [l.strip() for l in lane_info.get('ra', [])]:
                     return station
             return None
         except Exception:

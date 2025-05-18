@@ -53,6 +53,31 @@ class DataComparisonWorker(QObject):
         dic[sheet_name] = df
         return dic
     
+    def _select_columns(self, df, columns):
+        """
+        Chọn các cột cụ thể từ DataFrame nếu chúng tồn tại.
+        """
+        existing_columns = [col for col in columns if col in df.columns]
+        return df[existing_columns].copy()
+    
+    def rename_dataframe_columns(df, column_mapping):
+        """
+        Đổi tên các cột trong DataFrame.
+
+        Args:
+            df (pd.DataFrame): DataFrame cần đổi tên cột.
+            column_mapping (dict): Dictionary ánh xạ tên cột cũ sang tên cột mới.
+                                Ví dụ: {'old_name1': 'new_name1', 'old_name2': 'new_name2'}
+
+        Returns:
+            pd.DataFrame: DataFrame với các cột đã được đổi tên.
+                        Trả về DataFrame gốc nếu không có cột nào cần đổi tên.
+        """
+        try:
+            return df.rename(columns=column_mapping)
+        except Exception as e:
+            print(f"Lỗi khi đổi tên cột DataFrame: {e}")
+            return df
     
     def run(self):
         data_for_excel = {}
@@ -100,14 +125,19 @@ class DataComparisonWorker(QObject):
 
             cars_24h = Cars(df_xe_tra_phi.copy(), mapping_lane_config)
             df_chk_fee = cars_24h.get_transactions_info_df()
-            data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'DoiSoat-XeTraPhi', df_chk_fee) 
+            data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'VuNghiXuan', df_chk_fee) 
 
             # '4. Tổng đói soát'
             # df_report = TollDataProcessor(df_xe_tra_phi.copy()).get_simplified_transactions()
             # data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'BaoCao_TomTat', df_report) 
 
+            cols_bao_cao = ['Mã giao dịch chuẩn', 'Biển số chuẩn', 'Mã thẻ', 'BE_Số etag','Phí thu', 'BE_Tiền bao gồm thuế', 'Chênh lệch phí','Loại vé chuẩn', 'Làn chuẩn', 'Thời gian chuẩn', 'T/gian lỗi (phút)', 'Nghi vấn Antent','Mô tả hành trình', 'Trạng thái phí']
+            df_end = self._select_columns(df_chk_fee, cols_bao_cao)
+            data_for_excel = self.add_sheet_name_and_df_into_dic(data_for_excel, 'DoiSoat-XeTraPhi', df_end) 
+
             " 1234. Ghi dữ liệu ra file Excel"
             self.to_excel(self.output_dir, data_for_excel)
+
 
             
             # print(df_FE_BE[(df_FE_BE['BE_Biển số đăng ký']) & (df_FE_BE['Số xe đăng ký'])])

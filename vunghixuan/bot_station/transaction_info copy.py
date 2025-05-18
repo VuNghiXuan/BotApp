@@ -34,10 +34,11 @@ class Transaction:
         self.is_first_transaction_in_trip = False # Là giao dịch đầu tiên của lượt đi
         self.trip_description = ''      # Mô tả hành trình của lượt đi
         self.has_matching_exit = False  # Đã có giao dịch ra tương ứng
-        self.fee_status = 'Chưa xác định' # Trạng thái phí BE/FE
+        self.fee_status = '' # Trạng thái phí BE/FE
         self.is_round_trip = False      # Xác định là giao dịch quay đầu
         self.fix_antent = False         # Xác định giao dịch bị lỗi antent
         self.antent_doubt = ''          # Nghi vấn lỗi antent
+        self.is_part_of_short_trip_89_to_7 = False # Khắc phục lỗi xe đi vào làn 8,9 đi ra làn 7 bị lỗi Antent
 
         # Phân tích biến đổi kiểu dữ liệu
         self._parse_transaction(transaction)
@@ -144,8 +145,15 @@ class Transaction:
             self.fe_or_be_doubt = 'Khớp GD'
 
     def calculate_the_time_difference_for_fix_from_antent(self, other_transaction):
-        """Tính chênh lệch thời gian với giao dịch trước đó (phút) và xác định nghi vấn lỗi Antent."""
+        """Tính chênh lệch thời gian với giao dịch trước đó (phút) và xác định nghi vấn lỗi Antent, bỏ qua làn 7."""
         try:
+            # Kiểm tra nếu giao dịch hiện tại HOẶC giao dịch trước đó là ở làn 7, thì bỏ qua
+            if self.is_lan7 or (other_transaction and hasattr(other_transaction, 'is_lan7') and other_transaction.is_lan7):
+                self.time_diff_to_previous = None
+                self.fix_antent = False
+                self.antent_doubt = None
+                return  # Thoát khỏi hàm mà không thực hiện kiểm tra lỗi Antent
+
             other_time = other_transaction.time
             time_diff_seconds = (self.time - other_time).total_seconds()
             time_diff_minutes = time_diff_seconds / 60
@@ -162,21 +170,16 @@ class Transaction:
                 # else:
                 #     self.antent_doubt += ' (phí FE-BE khớp)'
 
-                # # Đánh dấu giao dịch trước đó
-                # other_transaction.time_diff_to_previous = round(time_diff_minutes, 3)
-                # other_transaction.fix_antent = True
-                # other_transaction.antent_doubt = doubt_note
-                # if other_transaction.diff_fee != 0:
-                #     other_transaction.antent_doubt += ' (có chênh lệch phí FE-BE)'
-                # else:
-                #     other_transaction.antent_doubt += ' (phí FE-BE khớp)'
+                # # Đánh dấu giao dịch trước đó (tùy thuộc vào logic bạn muốn)
+                # # other_transaction.time_diff_to_previous = round(time_diff_minutes, 3)
+                # # other_transaction.fix_antent = True
+                # # other_transaction.antent_doubt = doubt_note
+                # # if other_transaction.diff_fee != 0:
+                # #     other_transaction.antent_doubt += ' (có chênh lệch phí FE-BE)'
+                # # else:
+                # #     other_transaction.antent_doubt += ' (phí FE-BE khớp)'
             # else:
             #     self.time_diff_to_previous = round(time_diff_minutes, 3)
-
-        except Exception:
-            print(f"Lỗi xảy ra trong hàm calculate_the_time_difference_for_fix_from_antent:")
-            traceback.print_exc()
-            self.time_diff_to_previous = None
 
         except Exception:
             print(f"Lỗi xảy ra trong hàm calculate_the_time_difference_for_fix_from_antent:")

@@ -51,11 +51,11 @@ class Car:
         """
         try:
             time_diff_values = [tran.time_diff_to_previous for tran in self.transactions]
-            # self.journey['T/gian 2 lượt (phút)'] = time_diff_values
+            # self.journey['T/gian lỗi (phút)'] = time_diff_values
         except Exception as e:
             print(f'Lỗi hàm _update_time_diff_column_doubt_fix_antent trong class Car: {e}')
-            # if 'T/gian 2 lượt (phút)' in self.journey.columns:
-            #     self.journey['T/gian 2 lượt (phút)'] = np.nan
+            # if 'T/gian lỗi (phút)' in self.journey.columns:
+            #     self.journey['T/gian lỗi (phút)'] = np.nan
 
     def get_journey_df(self):
         """
@@ -67,25 +67,74 @@ class Car:
             print(f'Lỗi hàm get_journey_df trong class Car: {e}')
             return pd.DataFrame()
 
-    def _check_fee_consistency(self, fe_fee, be_fee):
-        """Kiểm tra sự nhất quán giữa phí FE và BE."""
-        first_ticket_type = str(self.journey['Loại vé chuẩn'].iloc[0]).lower()
-        if 'miễn phí' in first_ticket_type or 'quay đầu' in first_ticket_type:
-            return 'Vé miễn phí/Quay đầu'
-        elif fe_fee > be_fee:
-            return f'FE lớn hơn BE ({fe_fee} > {be_fee})'
-        elif fe_fee < be_fee:
-            return f'FE nhỏ hơn BE ({fe_fee} < {be_fee})'
-        elif fe_fee == be_fee and fe_fee > 0:
-            return f'FE = BE = {fe_fee}'
-        elif fe_fee == 0 and be_fee == 0:
-            return 'Không thu phí'
-        elif fe_fee > 0 and be_fee == 0:
-            return f'Chỉ có FE = {fe_fee}'
-        elif fe_fee == 0 and be_fee > 0:
-            return f'Chỉ có BE = {be_fee}'
-        else:
-            return 'Không xác định'
+    # def _check_fee_consistency(self, fe_fee, be_fee):
+    #     """Kiểm tra sự nhất quán giữa phí FE và BE."""
+    #     first_ticket_type = str(self.journey['Loại vé chuẩn'].iloc[0]).lower()
+    #     if 'miễn phí' in first_ticket_type or 'quay đầu' in first_ticket_type:
+    #         return 'Vé miễn phí/Quay đầu'
+    #     elif fe_fee > be_fee:
+    #         return f'FE lớn hơn BE ({fe_fee} > {be_fee})'
+    #     elif fe_fee < be_fee:
+    #         return f'FE nhỏ hơn BE ({fe_fee} < {be_fee})'
+    #     elif fe_fee == be_fee and fe_fee > 0:
+    #         return f'FE = BE = {fe_fee}'
+    #     elif fe_fee == 0 and be_fee == 0:
+    #         return 'Không thu phí'
+    #     elif fe_fee > 0 and be_fee == 0:
+    #         return f'Chỉ có FE = {fe_fee}'
+    #     elif fe_fee == 0 and be_fee > 0:
+    #         return f'Chỉ có BE = {be_fee}'
+    #     else:
+    #         return 'Không xác định'
+    
+    
+
+    def _check_and_set_fee_status(self, trans, is_start=False, is_end=False, is_lane7=False, is_turnaround=False):
+        """Kiểm tra và thiết lập trạng thái lỗi thu phí cho giao dịch."""
+        error_messages = []
+        if trans.fix_antent : #time_diff_to_previous
+            note = trans.antent_doubt
+            error_messages.append(note)
+        
+        if trans.fee_of_fe > 0 and trans.fee_of_be > 0 and trans.fee_of_fe != trans.fee_of_be:
+            error_messages.append("Phí thu chênh lệch (FE & BE) ")
+        elif trans.fee_of_fe > 0 and trans.fee_of_be == 0:
+            error_messages.append("BE Không thu phí")
+        elif trans.fee_of_fe == 0 and trans.fee_of_be > 0:
+            error_messages.append("FE Không thu phí")
+        elif is_start:
+            if trans.fee_of_fe > 0 and trans.fee_of_be == 0:
+                error_messages.append("Khởi hành: BE Không thu phí")
+            elif trans.fee_of_fe == 0 and trans.fee_of_be > 0:
+                error_messages.append("Khởi hành: FE Không thu phí")
+            elif trans.fee_of_fe == 0 and trans.fee_of_be == 0:
+                error_messages.append("Khởi hành: Không thu phí")
+        elif is_turnaround and trans.is_entry:
+            if trans.fee_of_fe > 0 and trans.fee_of_be == 0:
+                error_messages.append("Quay đầu: BE Không thu phí")
+            elif trans.fee_of_fe == 0 and trans.fee_of_be > 0:
+                error_messages.append("Quay đầu: FE Không thu phí")
+            # elif trans.fee_of_fe == 0 and trans.fee_of_be == 0:
+            #     error_messages.append("Quay đầu: Không thu phí")
+        elif is_lane7:
+            if trans.fee_of_fe > 0 and trans.fee_of_be == 0:
+                error_messages.append("Làn 7: BE Không thu phí")
+            elif trans.fee_of_fe == 0 and trans.fee_of_be > 0:
+                error_messages.append("Làn 7: FE Không thu phí")
+            elif trans.fee_of_fe == 0 and trans.fee_of_be == 0:
+                error_messages.append("Làn 7: Không thu phí")
+        elif is_end:
+            if trans.fee_of_fe > 0 and trans.fee_of_be == 0:
+                error_messages.append("Kết thúc: BE Không thu phí")
+            elif trans.fee_of_fe == 0 and trans.fee_of_be > 0:
+                error_messages.append("Kết thúc: FE Không thu phí")
+            # elif trans.fee_of_fe == 0 and trans.fee_of_be == 0:
+            #     error_messages.append("Kết thúc: Không thu phí")
+        
+
+        trans.fee_status = ", ".join(error_messages) #if error_messages else "Thu phí hợp lệ"
+        return trans.fee_status
+
 
     def _analyze_trips(self):
         """Phân tích các giao dịch để xác định lượt đi."""
@@ -122,18 +171,19 @@ class Car:
                 exited_lane_5_6 = True
                 previous_exit_5_6_transaction = trans
                 trans.trip_id = current_trip_id
-                trans.trip_description = f"--Ra làn {trans.lane}--"
+                trans.trip_description = f"--Ra làn {trans.lane}-- (Quay đầu)"
                 previous_transaction = trans
                 continue
 
             # Xử lý vào làn 8 hoặc 9 sau khi đã ra 5 hoặc 6
             elif trans.is_entry and trans.lane in ['Làn 8', 'Làn 9'] and exited_lane_5_6 and current_trip_id is not None:
                 trans.trip_id = current_trip_id
-                trans.trip_description = f"Lượt {trip_index}: Vào làn {trans.lane} (Quay đầu từ làn {previous_exit_5_6_transaction.lane if previous_exit_5_6_transaction else '?'})"
+                trans.trip_description = f"-- Quay đầu {trans.lane} -- (Từ làn {previous_exit_5_6_transaction.lane if previous_exit_5_6_transaction else '?'})"
                 if entry_transaction is None:
                     entry_transaction = trans
                 exited_lane_5_6 = False # Reset trạng thái
                 previous_exit_5_6_transaction = None # Reset
+                self._check_and_set_fee_status(trans, is_turnaround=True)
                 previous_transaction = trans
                 continue
 
@@ -153,14 +203,10 @@ class Car:
                     current_trip_id = str(uuid.uuid4())
                     trans.trip_id = current_trip_id
                     trans.is_first_transaction_in_trip = True
-                    trans.trip_description = f"Lượt {trip_index}: Vào trạm {trans.station} ({trans.lane})->Khởi hành (Làn 5/6 không quay đầu)"
+                    trans.trip_description = f"Lượt {trip_index}: Vào {trans.station} ({trans.lane})->Khởi hành" #(Làn 5/6 không quay đầu)
                     entry_transaction = trans
                     departure_lane = trans.lane
-                    trans.fee_status = self._check_fee_consistency(trans.fee_of_fe, trans.fee_of_be)
-                    if trans.fee_of_fe == 0:
-                        trans.fee_status = f"FE Không thu phí"
-                    elif trans.fee_of_be == 0:
-                        trans.fee_status = f"BE Không thu phí"
+                    self._check_and_set_fee_status(trans, is_start=True)
                     previous_transaction = trans
                     continue
 
@@ -168,16 +214,17 @@ class Car:
             elif trans.is_lan7 and current_trip_id is not None:
                 trans.trip_id = current_trip_id
                 trans.trip_description = f"--Làn kiểm soát--"
+                self._check_and_set_fee_status(trans, is_lane7=True)
                 previous_transaction = trans
                 continue
 
-            # XỬ LÝ KẾT THÚC LƯỢT ĐI THÔNG THƯỜNG (ĐIỀU CHỈNH QUAN TRỌNG)
+            # XỬ LÝ KẾT THÚC LƯỢT ĐI THÔNG THƯỜNG
             elif trans.is_exit and current_trip_id is not None and entry_transaction is not None and not (exited_lane_5_6 and trans.lane in ['Làn 5', 'Làn 6']):
                 trans.trip_id = current_trip_id
-                trans.trip_description = f"Lượt {trip_index}: Ra tại trạm {trans.station} ({trans.lane}) <- Kết thúc"
+                trans.trip_description = f"Lượt {trip_index}: Ra {trans.station} ({trans.lane}) <- Kết thúc"
                 trans.has_matching_exit = True
                 entry_transaction.has_matching_exit = True
-                trans.fee_status = self._check_fee_consistency(trans.fee_of_fe, trans.fee_of_be)
+                self._check_and_set_fee_status(trans, is_end=True)
                 end_lane = trans.lane
                 current_trip_id = None
                 entry_transaction = None
@@ -192,67 +239,141 @@ class Car:
                 current_trip_id = str(uuid.uuid4())
                 trans.trip_id = current_trip_id
                 trans.is_first_transaction_in_trip = True
-                trans.trip_description = f"Lượt {trip_index}: Vào trạm {trans.station} ({trans.lane})->Khởi hành"
+                trans.trip_description = f"Lượt {trip_index}: Vào {trans.station} ({trans.lane})->Khởi hành"
                 entry_transaction = trans
                 departure_lane = trans.lane
-                trans.fee_status = self._check_fee_consistency(trans.fee_of_fe, trans.fee_of_be)
-                if trans.fee_of_fe == 0:
-                    trans.fee_status = f"FE Không thu phí"
-                elif trans.fee_of_be == 0:
-                    trans.fee_status = f"BE Không thu phí"
+                self._check_and_set_fee_status(trans, is_start=True)
                 previous_transaction = trans
                 continue
 
-            # 2. Lượt đi dân sinh (từ trong ra, quay đầu tại trạm - logic này có thể cần xem xét lại)
-            elif trans.is_exit and not trans.is_lan7 and current_trip_id is None:
+
+            # 2. XỬ LÝ LƯỢT ĐI DÂN SINH VÀ LƯỢT ĐI MỘT CHIỀU
+            elif current_trip_id is None:
+                if trans.is_exit and not trans.is_lan7:
+                    # Giao dịch RA khi chưa có lượt đi -> Bắt đầu lượt đi (có thể là dân sinh)
+                    trip_index += 1
+                    current_trip_id = str(uuid.uuid4())
+                    trans.trip_id = current_trip_id
+                    trans.is_first_transaction_in_trip = True
+                    trans.trip_description = f"Lượt {trip_index}: Ra {trans.station} ({trans.lane}) -> Khởi hành"
+                    entry_transaction = trans # Coi giao dịch ra là điểm bắt đầu tiềm năng
+                    departure_lane = trans.lane
+                    self._check_and_set_fee_status(trans, is_start=True)
+                    previous_transaction = trans
+                    continue
+                elif trans.is_entry:
+                    # Giao dịch VÀO khi chưa có lượt đi -> Bắt đầu lượt đi thông thường
+                    trip_index += 1
+                    current_trip_id = str(uuid.uuid4())
+                    trans.trip_id = current_trip_id
+                    trans.is_first_transaction_in_trip = True
+                    trans.trip_description = f"Lượt {trip_index}: Vào {trans.station} ({trans.lane}) -> Khởi hành"
+                    entry_transaction = trans
+                    departure_lane = trans.lane
+                    self._check_and_set_fee_status(trans, is_start=True)
+                    previous_transaction = trans
+                    continue
+
+            # XỬ LÝ KHI ĐÃ CÓ LƯỢT ĐI (current_trip_id is not None)
+            elif current_trip_id is not None:
+                if trans.is_exit and entry_transaction is not None and trans.station == entry_transaction.station and not (exited_lane_5_6 and trans.lane in ['Làn 5', 'Làn 6']):
+                    # Giao dịch RA cùng trạm với giao dịch VÀO trước đó -> Kết thúc lượt đi
+                    trans.trip_id = current_trip_id
+                    trans.trip_description = f"Lượt {trip_index}: Ra {trans.station} ({trans.lane}) <- Kết thúc"
+                    trans.has_matching_exit = True
+                    trans.is_trip_end = True
+                    entry_transaction.has_matching_exit = True
+                    self._check_and_set_fee_status(trans, is_end=True)
+                    end_lane = trans.lane
+                    current_trip_id = None
+                    entry_transaction = None # Reset entry_transaction khi kết thúc lượt đi
+                    exited_lane_5_6 = False
+                    previous_exit_5_6_transaction = None
+                    previous_transaction = trans
+                    continue
+                elif trans.is_entry and entry_transaction is not None and current_trip_id is not None and trans.station == entry_transaction.station and entry_transaction.is_exit:
+                    # Giao dịch VÀO cùng trạm với giao dịch RA trước đó (đã được coi là bắt đầu lượt đi dân sinh) -> Kết thúc lượt đi dân sinh
+                    trans.trip_id = current_trip_id
+                    trans.trip_description = f"Lượt {trip_index}: Vào {trans.station} ({trans.lane}) <- Kết thúc (Dân sinh)"
+                    trans.has_matching_exit = True
+                    trans.is_trip_end = True
+                    entry_transaction.has_matching_exit = True
+                    self._check_and_set_fee_status(trans, is_end=True)
+                    end_lane = trans.lane
+                    current_trip_id = None
+                    entry_transaction = None # Reset entry_transaction khi kết thúc lượt đi dân sinh
+                    previous_transaction = trans
+                    continue
+                elif trans.is_exit and entry_transaction is None:
+                    # Giao dịch RA khi đã có current_trip_id nhưng không có entry_transaction (có thể là ra sau lượt dân sinh bắt đầu bằng ra)
+                    trans.trip_id = current_trip_id
+                    trans.trip_description = f"Lượt {trip_index}: Ra {trans.station} ({trans.lane}) <- Kết thúc"
+                    trans.has_matching_exit = True
+                    trans.is_trip_end = True
+                    self._check_and_set_fee_status(trans, is_end=True)
+                    end_lane = trans.lane
+                    current_trip_id = None
+                    previous_transaction = trans
+                    continue
+                elif trans.is_entry and current_trip_id is None and previous_transaction and previous_transaction.is_exit and previous_transaction.station == trans.station and not previous_transaction.has_matching_exit:
+                    # Giao dịch VÀO ngay sau giao dịch RA cùng trạm (chưa kết thúc) -> Kết thúc lượt dân sinh
+                    trans.trip_id = previous_transaction.trip_id
+                    trans.trip_description = f"Lượt {trip_index}: Vào {trans.station} ({trans.lane}) <- Kết thúc (Dân sinh)"
+                    trans.has_matching_exit = True
+                    trans.is_trip_end = True
+                    previous_transaction.has_matching_exit = True
+                    self._check_and_set_fee_status(trans, is_end=True)
+                    current_trip_id = None
+                    entry_transaction = None # Reset entry_transaction khi kết thúc lượt đi dân sinh
+                    previous_transaction = trans
+                    continue
+
+                
+            elif trans.is_entry and current_trip_id is None:
+                # Logic xử lý giao dịch vào khi chưa có lượt đi vẫn giữ nguyên
                 trip_index += 1
                 current_trip_id = str(uuid.uuid4())
                 trans.trip_id = current_trip_id
                 trans.is_first_transaction_in_trip = True
-                trans.trip_description = f"Lượt {trip_index}: Ra trạm {trans.station} ({trans.lane})-> Khởi hành"
+                trans.trip_description = f"Lượt {trip_index}: Vào {trans.station} ({trans.lane})->Khởi hành"
                 entry_transaction = trans
                 departure_lane = trans.lane
-                trans.has_matching_exit = False
-                trans.fee_status = self._check_fee_consistency(trans.fee_of_fe, trans.fee_of_be)
-                if trans.fee_of_fe > 0:
-                    trans.fee_status = f"FE Thu phí sai (bắt đầu)"
-                elif trans.fee_of_be > 0:
-                    trans.fee_status = f"BE Thu phí sai (bắt đầu)"
+                self._check_and_set_fee_status(trans, is_start=True)
+                previous_transaction = trans
                 continue
-            elif trans.is_entry and current_trip_id is not None and entry_transaction is not None and trans.station == entry_transaction.station:
+            elif trans.is_entry and current_trip_id is None:
+                # Logic xử lý giao dịch vào khi chưa có lượt đi vẫn giữ nguyên
+                trip_index += 1
+                current_trip_id = str(uuid.uuid4())
                 trans.trip_id = current_trip_id
-                trans.trip_description = f"Lượt {trip_index}: Vào trạm {trans.station} ({trans.lane}) <- Kết thúc"
-                trans.has_matching_exit = True
-                entry_transaction.has_matching_exit = True
-                trans.fee_status = self._check_fee_consistency(trans.fee_of_fe, trans.fee_of_be)
-                if trans.fee_of_fe == 0:
-                    trans.fee_status = f"FE Không thu phí (kết thúc)"
-                elif trans.fee_of_be == 0:
-                    trans.fee_status = f"BE Không thu phí (kết thúc)"
-                end_lane = trans.lane
-                current_trip_id = None
-                entry_transaction = None
-                exited_lane_5_6 = False # Reset trạng thái
-                previous_exit_5_6_transaction = None # Reset
+                trans.is_first_transaction_in_trip = True
+                trans.trip_description = f"Lượt {trip_index}: Vào {trans.station} ({trans.lane})->Khởi hành"
+                entry_transaction = trans
+                departure_lane = trans.lane
+                self._check_and_set_fee_status(trans, is_start=True)
+                previous_transaction = trans
                 continue
 
             previous_transaction = trans
 
         first_transaction = next((t for t in self.transactions if not t.fix_antent and not t.is_part_of_short_trip_89_to_7), None)
         if first_transaction and first_transaction.is_exit and first_transaction.trip_id is None:
-            first_transaction.trip_description = f"Lượt 1: Ra trạm {first_transaction.station} ({first_transaction.lane}) - Chưa xác định điểm vào"
+            first_transaction.trip_description = f"Lượt 1: Ra {first_transaction.station} ({first_transaction.lane}) - Chưa xác định điểm vào"
             first_transaction.is_first_transaction_in_trip = True
             first_transaction.has_matching_exit = True
-            first_transaction.fee_status = self._check_fee_consistency(first_transaction.fee_of_fe, first_transaction.fee_of_be)
-            if first_transaction.fee_of_fe > 0:
-                first_transaction.fee_status = f"FE Thu phí sai (không vào)"
-            elif first_transaction.fee_of_be > 0:
-                first_transaction.fee_status = f"BE Thu phí sai (không vào)"
+            self._check_and_set_fee_status(first_transaction, is_start=True)
+            if first_transaction.fee_of_fe == 0 and first_transaction.fee_of_be == 0:
+                first_transaction.fee_status = "Khởi hành không thu phí (không vào)"
+            elif first_transaction.fee_of_fe == 0:
+                first_transaction.fee_status = "FE Không thu phí (không vào)"
+            elif first_transaction.fee_of_be == 0:
+                first_transaction.fee_status = "BE Không thu phí (không vào)"
 
     def _count_valid_trips(self):
         """Đếm số lượt đi hợp lệ (có cả vào và ra)."""
         return sum(1 for trans in self.transactions if trans.has_matching_exit and trans.trip_id is not None and not trans.fix_antent)
-    
+
+
 class Cars():
     def __init__(self, df_has_fee, mapping_lane):
         try:
@@ -309,10 +430,10 @@ class Cars():
             for car_license, car_obj in self.car_journeys.items():
                 for trans in car_obj.transactions:
                     transaction_info = trans.info.copy()
-                    transaction_info['Chênh lệch phí FE-BE'] = trans.diff_fee
+                    transaction_info['Chênh lệch phí'] = trans.diff_fee #'Chênh lệch phí FE-BE'
                     transaction_info['Lỗi Antent'] = trans.fix_antent
-                    transaction_info['T/gian 2 lượt (phút)'] = trans.time_diff_to_previous
-                    transaction_info['Nghi vấn lỗi Antent'] = trans.antent_doubt
+                    transaction_info['T/gian lỗi (phút)'] = trans.time_diff_to_previous
+                    transaction_info['Nghi vấn Antent'] = trans.antent_doubt
                     transaction_info['GD có FE hoặc BE'] = trans.tran_only_fe_not_be
                     transaction_info['Nghi vấn GD 1 phía'] = trans.fe_or_be_doubt
                     transaction_info['Mô tả hành trình'] = trans.trip_description

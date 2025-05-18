@@ -566,3 +566,16 @@ Nếu trong một khoảng thời gian nhất định, hệ thống chỉ ghi nh
 5. Trường hợp xe đã ra mà chưa xác định điểm vào:
 
 Nếu trong một khoảng thời gian nhất định, hệ thống chỉ ghi nhận được giao dịch ra thỏa mãn điều kiện 'Lỗi Antent' == False' và là làn 'ra' (theo self.mapping_lane) cho một xe, mà không có giao dịch vào nào thỏa mãn điều kiện 'Lỗi Antent' == False' và là làn 'vào' (theo self.mapping_lane) cho cùng xe đó trước đó, thì trạng thái sẽ được ghi nhận là "xe đã ra mà chưa xác định điểm vào".
+
+Tao mô tả lại code sai như sau:
+Hiện nay, kết quả sai các lượt đi dân sinh lần lượt là: 
+    Lượt 1: Ra 2A (Làn 12) -> Vào 2A (Làn 10) (Dân sinh)
+    Lượt 1: Vào 2A (Làn 10) <- Kết thúc (Dân sinh)
+    Lượt 1: Ra 2A (Làn 12) <- Kết thúc
+    Lượt 2: Vào 2A (Làn 10)->Khởi hành
+Tao cần đúng như thế này:
+    Lượt 1: Ra 2A (Làn 12) ->Khởi hành
+    Lượt 1: Vào 2A (Làn 10) <- Kết thúc
+    Lượt 2: Ra 2A (Làn 12) ->Khởi hành
+    Lượt 2: Vào 2A (Làn 10) <- Kết thúc
+Hãy kiểm tra lại các giao dịch này sai ở đâu, có ghi nhận lượt kết thúc để chờ giao dịch khác hay không, ví dụ như chờ giao dịch ra 5,6 vào 8,9 chẳng hạn

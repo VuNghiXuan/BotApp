@@ -23,6 +23,7 @@ class ExcelWithTOC:
             self.toc_sheet = self.wb.sheets.add(self.toc_sheet_name)
             self.sheets_and_data = sheets_and_data
             self.add_sheet_with_data()
+            
 
     def is_excel_file_open(self, file_path):
         """Kiểm tra xem file Excel có đang được mở không."""
@@ -61,34 +62,56 @@ class ExcelWithTOC:
         if self.app:
             self.app.quit()
     
-    def format_worksheet(self, ws):
-        # Tự động điều chỉnh kích thước cột và hàng
-        ws.autofit('columns')
-        ws.autofit('rows')
+    def change_row_color(self, ws):
+        # Lấy số lượng dòng trong sheet
+        last_row = ws.cells.last_cell.row
         
-        # DÒng hyperlink
-        hyper_row = ws.used_range.rows[0]
-        hyper_row.font.color = (255, 0, 0)  # Màu chứ đỏ
+        # Lặp qua từng nhóm 4 dòng
+        for i in range(1, last_row + 1, 4):
+            # Thay đổi màu nền cho nhóm 4 dòng
+            ws.range(f'A{i}:D{i+3}').color = (255, 255, 0)  # Màu vàng
 
-        # Lấy dòng đầu tiên
-        first_row = ws.used_range.rows[1]
-        first_row.api.WrapText = True
+    def format_worksheet(self, ws):
+        try:
+            # Tự động điều chỉnh kích thước cột và hàng
+            ws.autofit('columns')
+            ws.autofit('rows')
+            
+            # DÒng hyperlink
+            hyper_row = ws.used_range.rows[0]
+            hyper_row.font.color = (255, 0, 0)  # Màu chứ đỏ
 
-        # # Bọc văn bản cho các ô có độ dài lớn hơn 30 ký tự
-        # for col in ws.used_range.columns:
-        #     for cell in col:
-        #         if len(str(cell.value)) > 30:
-        #             cell.api.WrapText = True
+            # Lấy dòng đầu tiên
+            first_row = ws.used_range.rows[1]
+            first_row.api.WrapText = True
 
-        # Định dạng dòng đầu tiên
-        first_row.color = (0, 139, 0)  # Màu nền xanh lá cây đậm
-        first_row.font.color = (255, 255, 255)  # Màu chữ trắng
-        first_row.font.bold = True  # In đậm
-        # Canh giữa theo chiều ngang
-        first_row.api.HorizontalAlignment = xw.constants.HAlign.xlHAlignCenter
+            # # Bọc văn bản cho các ô có độ dài lớn hơn 30 ký tự
+            # for col in ws.used_range.columns:
+            #     for cell in col:
+            #         if len(str(cell.value)) > 30:
+            #             cell.api.WrapText = True
 
-        # Canh giữa theo chiều dọc
-        first_row.api.VerticalAlignment = xw.constants.VAlign.xlVAlignCenter
+            # Định dạng dòng đầu tiên
+            first_row.color = (0, 139, 0)  # Màu nền xanh lá cây đậm
+            first_row.font.color = (255, 255, 255)  # Màu chữ trắng
+            first_row.font.bold = True  # In đậm
+            # Canh giữa theo chiều ngang
+            first_row.api.HorizontalAlignment = xw.constants.HAlign.xlHAlignCenter
+
+            # Canh giữa theo chiều dọc
+            first_row.api.VerticalAlignment = xw.constants.VAlign.xlVAlignCenter
+
+            # Bật chức năng filter tự động từ dòng 2 (sau hyperlink)
+            # user_range = ws.used_range
+            # if user_range.rows.count > 1:
+            #     header_range = user_range.rows[1]
+            #     ws.api.AutoFilter.Range = header_range.address
+            # else:
+            #     print(f"Bỏ qua định dạng sheet '{ws.name}' do không có dữ liệu hoặc lỗi xác định vùng dữ liệu.")
+
+            
+        except Exception as e:
+            print("Lỗi hàm format_worksheet:", e)
 
         
 
@@ -126,6 +149,9 @@ class ExcelWithTOC:
                 ws.used_range.rows[0]
             except Exception as e:
                 print(f"Lỗi khi thêm sheet '{sheet_name}': {e}")
+
+            # Thay đổi màu từng nhóm 4 dòng (bắt đầu từ dòng thứ 3 sau hyperlink và tiêu đề)
+            # self.change_row_color(ws)
 
         self._update_toc()
 
